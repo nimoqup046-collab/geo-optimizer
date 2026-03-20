@@ -199,8 +199,12 @@ def compute_readability(text: str) -> float:
     return min(100.0, max(0.0, score))
 
 
+_EMOJI_PATTERN = re.compile(
+    r"[\U0001F300-\U0001F9FF\u2600-\u26FF\u2700-\u27BF]"
+)
+
 _AUTHORITY_PATTERNS = [
-    r"根据.{2,30}(研究|报告|调查|数据)",  # "according to ... research/report"
+    r"根据.{2,30}(研究|报告|调查|数据)",  # "according to ... study/report/survey/data"
     r"(教授|博士|专家|学者|院士).{0,10}(指出|认为|表示|建议)",
     r"(大学|研究院|实验室|学会|协会).{0,15}(发现|发布|报告)",
     r"(世界卫生组织|WHO|联合国|国务院|教育部)",  # institutional references
@@ -364,9 +368,7 @@ def compute_platform_fitness(
         elif word_count < spec["min_words"] * 0.5 or word_count > spec["max_words"] * 1.5:
             score -= 10
 
-        emoji_count = len(re.findall(
-            r"[\U0001F300-\U0001F9FF\u2600-\u26FF\u2700-\u27BF]", text
-        ))
+        emoji_count = len(_EMOJI_PATTERN.findall(text))
         if spec["emoji_expected"] and emoji_count >= 3:
             score += 15
         elif not spec["emoji_expected"] and emoji_count == 0:

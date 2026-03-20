@@ -136,7 +136,7 @@ def format_generation_prompt(
             )
 
     return (
-        f"请围绕主题\u201c{topic}\u201d生成一篇{rule['name']}。\n"
+        f"请围绕主题“{topic}”生成一篇{rule['name']}。\n"
         f"目标长度：{rule['length']}\n"
         f"风格要求：{rule['style']}\n"
         f"语气调性：{style['tone']}\n"
