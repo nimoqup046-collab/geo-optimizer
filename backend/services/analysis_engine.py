@@ -3,6 +3,8 @@ import re
 from collections import Counter
 from typing import Any, Dict, List, Optional
 
+from config import settings
+from services.agent_team import assemble_team_report, compute_geo_score, run_agent_team
 from services.llm_service import generate_content
 
 
@@ -91,7 +93,6 @@ def score_keyword(
     has_qa_structure: bool = False,
     has_entity: bool = False,
 ) -> float:
-    from services.agent_team import compute_geo_score
     return compute_geo_score(
         keyword=keyword,
         intent=intent,
@@ -297,9 +298,6 @@ async def build_agent_team_summary(
     Run the expert agent team and assemble a multi-section comprehensive report.
     Falls back to a simple fallback string if OpenRouter is unavailable.
     """
-    from config import settings
-    from services.agent_team import assemble_team_report, run_agent_team
-
     if not settings.OPENROUTER_API_KEY or not settings.FEATURE_AGENT_TEAM:
         return _fallback_summary(payload)
 

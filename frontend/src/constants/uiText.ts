@@ -80,7 +80,6 @@ export const UI_TEXT = {
     run: '生成报告',
     reports: '分析报告',
     detail: '报告详情',
-    agentTeam: '专家团队深度分析',
     agentTeamToggle: '启用专家团队（需 OpenRouter API Key）',
     agentTeamReport: '专家团队综合报告',
     modelLabel: '分析模型',

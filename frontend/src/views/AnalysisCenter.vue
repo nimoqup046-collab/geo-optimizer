@@ -197,8 +197,9 @@ const run = async () => {
     })
     message.success('报告已生成')
     await load()
-    // Auto-open the just-created report.
-    activeReport.value = result
+    // Auto-open the freshly generated report from the reloaded list.
+    const found = reports.value.find((r) => r.report_id === result.report_id)
+    activeReport.value = found ?? result
   } catch (error: any) {
     message.error(`生成失败：${error?.message || UI_TEXT.common.unknownError}`)
   } finally {
