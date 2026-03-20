@@ -32,6 +32,15 @@
             placeholder="可选"
           />
         </n-form-item>
+        <n-form-item :label="UI_TEXT.workshop.contentModelLabel">
+          <n-select
+            v-model:value="generateForm.llm_provider"
+            :options="contentModelOptions"
+            clearable
+            style="width: 220px"
+            :placeholder="UI_TEXT.workshop.contentModelDefault"
+          />
+        </n-form-item>
         <n-form-item>
           <n-button type="primary" :loading="generating" @click="generate">
             {{ UI_TEXT.workshop.generate }}
@@ -124,11 +133,17 @@ const platformOptions = [
   { label: '短视频脚本', value: 'video' }
 ]
 
+const contentModelOptions = [
+  { label: UI_TEXT.workshop.contentModelClaude, value: 'openrouter' },
+  { label: UI_TEXT.workshop.contentModelGemini, value: 'openrouter_gemini' }
+]
+
 const generateForm = reactive({
   report_id: '',
   count: 1,
   target_platforms: ['wechat', 'xiaohongshu', 'zhihu', 'video'],
-  prompt_profile_id: null as string | null
+  prompt_profile_id: null as string | null,
+  llm_provider: null as string | null
 })
 
 const promptProfileForm = reactive({
@@ -198,7 +213,8 @@ const generate = async () => {
       content_type: 'article',
       target_platforms: generateForm.target_platforms,
       count: generateForm.count,
-      prompt_profile_id: generateForm.prompt_profile_id || undefined
+      prompt_profile_id: generateForm.prompt_profile_id || undefined,
+      llm_provider: generateForm.llm_provider || undefined
     })
     message.success('内容已生成')
     await load()
