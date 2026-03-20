@@ -35,7 +35,9 @@
 - `scripts/smoke.py`
 - `scripts/import_real_assets.py`
 - `scripts/repo_preflight.py`
+- `scripts/install_main_guard_hook.py`
 - `仓库上云前检查.bat`
+- `启用防误推main.bat`
 
 ## 真实资料导入（核心 20 份）
 
