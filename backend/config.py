@@ -37,11 +37,15 @@ class Settings(BaseSettings):
     OPENROUTER_SITE_URL: Optional[str] = None
     OPENROUTER_APP_NAME: Optional[str] = None
     OPENROUTER_MODEL: str = "openai/gpt-4o-mini"
+    # Expert-grade models for deep analysis and content generation.
+    OPENROUTER_ANALYSIS_MODEL: str = "anthropic/claude-sonnet-4-5"
+    OPENROUTER_CONTENT_MODEL: str = "google/gemini-2.5-pro-preview"
 
     # Feature flags.
     FEATURE_WECHAT_RICH_POST: bool = False
     FEATURE_PROMPT_PROFILES: bool = True
     FEATURE_WORKFLOW_STEPS: bool = True
+    FEATURE_AGENT_TEAM: bool = True
 
     # Storage backend.
     STORAGE_BACKEND: str = "local"  # local | s3

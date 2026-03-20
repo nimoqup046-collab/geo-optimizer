@@ -18,11 +18,13 @@ from models.keyword_topic import KeywordIntent, KeywordTopic
 from models.report import AnalysisReport
 from models.source_asset import SourceAsset
 from services.analysis_engine import (
+    build_agent_team_summary,
     build_data_layer_summary,
     build_llm_summary,
     build_recommendations,
     classify_keyword,
     estimate_difficulty,
+    has_qa_structure,
     score_keyword,
 )
 from services.storage import storage_service
@@ -38,6 +40,10 @@ class AnalysisRunRequest(BaseModel):
     competitor_keywords: List[str] = Field(default_factory=list)
     asset_ids: List[str] = Field(default_factory=list)
     target_platforms: List[str] = Field(default_factory=lambda: ["wechat", "xiaohongshu", "zhihu", "video"])
+    # Agent team options.
+    use_agent_team: bool = False
+    agent_roles: Optional[List[str]] = None  # subset of role_keys; None = all
+    analysis_model: Optional[str] = None     # override LLM model for single-model summary
 
 
 class AnalysisRunResponse(BaseModel):
@@ -47,18 +53,21 @@ class AnalysisRunResponse(BaseModel):
     gap_analysis: Dict[str, Any]
     recommendations: List[str]
     llm_summary: str
+    agent_team_report: Optional[str] = None
     created_at: datetime
 
 
 def _to_markdown(report: AnalysisReport) -> str:
     payload = report.input_payload or {}
     target_platforms = payload.get("target_platforms") or []
+    gap = report.gap_analysis or {}
     lines = [
         f"# {report.title}",
         "",
         f"- 生成时间：{report.created_at.isoformat()}",
         f"- 报告 ID：{report.id}",
         f"- 目标平台：{', '.join(target_platforms) if target_platforms else '未指定'}",
+        f"- GEO 可见性综合得分：{gap.get('geo_visibility_score', 0):.1%}",
         "",
         "## 关键词分层",
     ]
@@ -71,16 +80,17 @@ def _to_markdown(report: AnalysisReport) -> str:
             continue
         for item in layer_items:
             lines.append(
-                f"- {item.get('keyword', '')} | 难度: {item.get('difficulty', '')} | 分数: {item.get('score', '')}"
+                f"- {item.get('keyword', '')} | 难度: {item.get('difficulty', '')} | GEO分数: {item.get('score', '')}"
             )
         lines.append("")
 
-    gap = report.gap_analysis or {}
     lines.extend(
         [
             "## 内容缺口分析",
             f"- 素材数：{gap.get('asset_count', 0)}",
             f"- 覆盖率：{gap.get('coverage_ratio', 0)}",
+            f"- GEO 可见性得分：{gap.get('geo_visibility_score', 0):.1%}",
+            f"- 问答结构关键词：{', '.join(gap.get('qa_structure_keywords', [])) or '无'}",
             f"- 已覆盖关键词：{', '.join(gap.get('covered_keywords', [])) or '无'}",
             f"- 缺失关键词：{', '.join(gap.get('missing_keywords', [])) or '无'}",
             "",
@@ -98,6 +108,21 @@ def _to_markdown(report: AnalysisReport) -> str:
             "",
         ]
     )
+
+    # Append agent team report if present.
+    agent_team_report = (report.competitor_analysis or {}).get("agent_team_report")
+    if agent_team_report:
+        lines.extend(
+            [
+                "---",
+                "",
+                "# 专家团队综合报告",
+                "",
+                agent_team_report,
+                "",
+            ]
+        )
+
     return "\n".join(lines)
 
 
@@ -188,10 +213,23 @@ async def run_analysis(request: AnalysisRunRequest, db: AsyncSession = Depends(g
         KeywordIntent.COMPETITOR: [],
     }
 
+    # Pre-compute data layer first so we know which keywords are covered.
+    data_layer_pre = build_data_layer_summary(asset_texts, all_keywords)
+    covered_set = set(data_layer_pre.get("covered_keywords", []))
+
     for keyword in all_keywords:
         intent = classify_keyword(keyword, brand.name, brand.competitors or [])
         difficulty = estimate_difficulty(keyword)
-        score = score_keyword(keyword, intent, difficulty)
+        covered = keyword in covered_set
+        qa = has_qa_structure(keyword)
+        score = score_keyword(
+            keyword,
+            intent,
+            difficulty,
+            covered=covered,
+            has_qa_structure=qa,
+            has_entity=(intent == "brand"),
+        )
         priority = int(score)
 
         topic = KeywordTopic(
@@ -214,6 +252,8 @@ async def run_analysis(request: AnalysisRunRequest, db: AsyncSession = Depends(g
                 "difficulty": difficulty,
                 "score": score,
                 "priority": priority,
+                "covered": covered,
+                "qa_structure": qa,
                 "target_platforms": request.target_platforms,
             }
         )
@@ -244,8 +284,18 @@ async def run_analysis(request: AnalysisRunRequest, db: AsyncSession = Depends(g
             "auto_selected_all_assets": len(request.asset_ids) == 0,
         },
     }
-    llm_summary = await build_llm_summary(llm_payload)
+
+    llm_summary = await build_llm_summary(llm_payload, model=request.analysis_model)
     report_title = f"{brand.name} GEO 策略报告"
+
+    # Run agent team if requested and available.
+    agent_team_report: Optional[str] = None
+    if request.use_agent_team and settings.FEATURE_AGENT_TEAM:
+        agent_team_report = await build_agent_team_summary(
+            llm_payload,
+            roles=request.agent_roles,
+        )
+        competitor_analysis["agent_team_report"] = agent_team_report
 
     report = AnalysisReport(
         id=str(uuid.uuid4()),
@@ -272,6 +322,7 @@ async def run_analysis(request: AnalysisRunRequest, db: AsyncSession = Depends(g
         gap_analysis=report.gap_analysis,
         recommendations=report.recommendations,
         llm_summary=report.llm_summary,
+        agent_team_report=agent_team_report,
         created_at=report.created_at,
     )
 
@@ -296,6 +347,7 @@ async def list_reports(
             gap_analysis=r.gap_analysis,
             recommendations=r.recommendations,
             llm_summary=r.llm_summary,
+            agent_team_report=(r.competitor_analysis or {}).get("agent_team_report"),
             created_at=r.created_at,
         )
         for r in reports

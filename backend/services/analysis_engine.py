@@ -1,7 +1,7 @@
 import json
 import re
 from collections import Counter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from services.llm_service import generate_content
 
@@ -21,6 +21,23 @@ LONG_TAIL_HINTS = [
     "如何",
     "为什么",
     "哪个好",
+]
+
+# Additional hints that indicate Q&A-structured content with high AI-citation potential.
+QA_STRUCTURE_HINTS = [
+    "?",
+    "？",
+    "怎么",
+    "如何",
+    "为什么",
+    "什么是",
+    "how to",
+    "what is",
+    "why does",
+    "guide",
+    "教程",
+    "方法",
+    "步骤",
 ]
 
 STOP_WORDS = {
@@ -66,25 +83,29 @@ def estimate_difficulty(keyword: str) -> str:
     return "low"
 
 
-def score_keyword(keyword: str, intent: str, difficulty: str) -> float:
-    score = 55.0
+def score_keyword(
+    keyword: str,
+    intent: str,
+    difficulty: str,
+    covered: bool = False,
+    has_qa_structure: bool = False,
+    has_entity: bool = False,
+) -> float:
+    from services.agent_team import compute_geo_score
+    return compute_geo_score(
+        keyword=keyword,
+        intent=intent,
+        difficulty=difficulty,
+        covered=covered,
+        has_qa_structure=has_qa_structure,
+        has_entity=has_entity,
+    )
 
-    if intent == "brand":
-        score += 20.0
-    elif intent == "long_tail":
-        score += 10.0
-    elif intent == "competitor":
-        score += 4.0
 
-    if difficulty == "low":
-        score += 12.0
-    elif difficulty == "high":
-        score -= 8.0
-
-    if len(keyword.strip()) > 20:
-        score -= 3.0
-
-    return max(1.0, min(100.0, score))
+def has_qa_structure(keyword: str) -> bool:
+    """Return True if the keyword matches Q&A-style patterns (high AI-citation signal)."""
+    key = keyword.lower().strip()
+    return any(hint.lower() in key for hint in QA_STRUCTURE_HINTS)
 
 
 def extract_topic_terms(text: str) -> List[str]:
@@ -114,12 +135,21 @@ def build_data_layer_summary(asset_texts: List[str], keywords: List[str]) -> Dic
 
     missing_keywords = [keyword for keyword in keywords if keyword not in covered_keywords]
 
+    # Compute Q&A structure signals for better GEO awareness.
+    qa_keywords = [kw for kw in keywords if has_qa_structure(kw)]
+
     return {
         "asset_count": len(asset_texts),
         "top_terms": top_terms,
         "covered_keywords": covered_keywords,
         "missing_keywords": missing_keywords,
         "coverage_ratio": round(len(covered_keywords) / max(1, len(keywords)), 4),
+        "qa_structure_keywords": qa_keywords,
+        "geo_visibility_score": round(
+            (len(covered_keywords) / max(1, len(keywords))) * 0.6
+            + (len(qa_keywords) / max(1, len(keywords))) * 0.4,
+            4,
+        ),
     }
 
 
@@ -130,6 +160,8 @@ def build_recommendations(
     recommendations: List[str] = []
     missing_keywords = data_layer.get("missing_keywords", [])
     covered_keywords = data_layer.get("covered_keywords", [])
+    geo_visibility = data_layer.get("geo_visibility_score", 0)
+    qa_kws = data_layer.get("qa_structure_keywords", [])
 
     if data_layer["coverage_ratio"] < 0.5:
         top_missing = "、".join(missing_keywords[:5]) if missing_keywords else "核心关键词"
@@ -144,6 +176,17 @@ def build_recommendations(
     if keyword_layers.get("long_tail"):
         recommendations.append("长尾问题采用问答式结构，提高在 AI 搜索中的可引用概率。")
 
+    if geo_visibility < 0.4:
+        recommendations.append(
+            "GEO 可见性偏低（当前得分 {:.0%}）：建议将核心内容改写为问答格式，"
+            "增加数据锚点和可引用结论，提升 AI 搜索引用率。".format(geo_visibility)
+        )
+    elif qa_kws:
+        top_qa = "、".join(qa_kws[:3])
+        recommendations.append(
+            f"已有问答型关键词（{top_qa}）具备较高 GEO 潜力，优先为这些词生成结构化问答内容。"
+        )
+
     recommendations.append("建立固定发布节奏：每周 1 个主话题 + 2 个平台改写版本。")
     recommendations.append("每篇内容增加结论句、步骤清单和风险提示，提升可读性和转化。")
 
@@ -156,12 +199,14 @@ def _fallback_summary(payload: Dict[str, Any]) -> str:
     missing = gap.get("missing_keywords", [])
     top_terms = gap.get("top_terms", [])[:8]
     brand = payload.get("brand", {}).get("name", "当前品牌")
+    geo_visibility = gap.get("geo_visibility_score", 0)
 
     lines = [
         f"# {brand} GEO 分析摘要",
         "",
         "## 1. 核心结论",
         f"- 当前关键词覆盖率：{gap.get('coverage_ratio', 0)}",
+        f"- GEO 可见性综合得分：{geo_visibility:.1%}",
         f"- 待补齐关键词数：{len(missing)}",
         f"- 高相关主题词：{', '.join(top_terms) if top_terms else '暂无'}",
         "",
@@ -176,6 +221,7 @@ def _fallback_summary(payload: Dict[str, Any]) -> str:
             "",
             "## 3. 下一轮验证指标",
             "- 7 天内缺失关键词覆盖率提升到 0.7+",
+            "- GEO 可见性得分提升至 0.6+",
             "- 主平台内容完成率 >= 90%",
             "- 发布后 48 小时互动率与线索率持续追踪",
         ]
@@ -209,7 +255,10 @@ def _is_summary_actionable(payload: Dict[str, Any], text: str) -> bool:
     return hit >= required_hits
 
 
-async def build_llm_summary(payload: Dict[str, Any]) -> str:
+async def build_llm_summary(
+    payload: Dict[str, Any],
+    model: Optional[str] = None,
+) -> str:
     prompt = (
         "你是 GEO 策略分析师。请仅使用中文输出 Markdown 报告。"
         "不要输出英文段落，不要空话。\n"
@@ -228,6 +277,7 @@ async def build_llm_summary(payload: Dict[str, Any]) -> str:
             role="analysis_strategist",
             temperature=0.25,
             max_tokens=1800,
+            model=model or None,
         )
         text = (content or "").strip()
         if not text:
@@ -235,5 +285,27 @@ async def build_llm_summary(payload: Dict[str, Any]) -> str:
         if not _is_summary_actionable(payload, text):
             return _fallback_summary(payload)
         return text
+    except Exception:
+        return _fallback_summary(payload)
+
+
+async def build_agent_team_summary(
+    payload: Dict[str, Any],
+    roles: Optional[List[str]] = None,
+) -> str:
+    """
+    Run the expert agent team and assemble a multi-section comprehensive report.
+    Falls back to a simple fallback string if OpenRouter is unavailable.
+    """
+    from config import settings
+    from services.agent_team import assemble_team_report, run_agent_team
+
+    if not settings.OPENROUTER_API_KEY or not settings.FEATURE_AGENT_TEAM:
+        return _fallback_summary(payload)
+
+    try:
+        reports = await run_agent_team(payload, roles=roles)
+        assembled = assemble_team_report(reports)
+        return assembled if assembled.strip() else _fallback_summary(payload)
     except Exception:
         return _fallback_summary(payload)
