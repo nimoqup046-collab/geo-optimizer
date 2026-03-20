@@ -44,6 +44,7 @@ export interface AnalysisReport {
   gap_analysis: Record<string, any>
   recommendations: string[]
   llm_summary: string
+  agent_team_report?: string | null
   created_at: string
 }
 

@@ -80,7 +80,14 @@ export const UI_TEXT = {
     title: '运行 GEO 分析',
     run: '生成报告',
     reports: '分析报告',
-    detail: '报告详情'
+    detail: '报告详情',
+    agentTeamToggle: '启用专家团队（需 OpenRouter API Key）',
+    agentTeamReport: '专家团队综合报告',
+    modelLabel: '分析模型',
+    modelDefault: '默认模型',
+    modelClaude: 'Claude Sonnet 4.5（深度推理）',
+    modelGemini: 'Gemini 2.5 Pro（数据分析）',
+    geoVisibility: 'GEO 可见性得分'
   },
   workshop: {
     generateTitle: '从报告生成内容',
@@ -91,7 +98,11 @@ export const UI_TEXT = {
     exportPdf: '导出 PDF',
     wechatRichPost: '公众号一键图文（占位）',
     promptProfiles: '专家提示词档案',
-    workflowSteps: 'Skill 子步骤编排'
+    workflowSteps: 'Skill 子步骤编排',
+    contentModelLabel: '内容生成模型',
+    contentModelDefault: '默认模型',
+    contentModelClaude: 'Claude Sonnet 4.5',
+    contentModelGemini: 'Gemini 2.5 Pro'
   },
   distribution: {
     modeNotice:
