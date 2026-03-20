@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     MAX_CONTENT_PER_REQUEST: int = 10
     KEYWORD_CACHE_TTL: int = 3600
 
+    # Industry configuration.
+    DEFAULT_INDUSTRY: str = "emotional_counseling"
+
     @field_validator("DEFAULT_LLM_PROVIDER")
     @classmethod
     def validate_provider(cls, value: str) -> str:
