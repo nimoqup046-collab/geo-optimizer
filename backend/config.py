@@ -41,8 +41,16 @@ class Settings(BaseSettings):
     OPENROUTER_ANALYSIS_MODEL: str = "anthropic/claude-sonnet-4-5"
     OPENROUTER_CONTENT_MODEL: str = "google/gemini-2.5-pro-preview"
 
+    # Expert team model routing (via OpenRouter).
+    EXPERT_STRATEGY_MODEL: str = "anthropic/claude-sonnet-4-6"
+    EXPERT_CONTENT_MODEL: str = "anthropic/claude-sonnet-4-6"
+    EXPERT_REVIEW_MODEL: str = "anthropic/claude-sonnet-4-6"
+    EXPERT_ANALYSIS_MODEL: str = "google/gemini-3.1-pro"
+    EXPERT_GEO_MODEL: str = "google/gemini-3.1-pro"
+
     # Feature flags.
     FEATURE_WECHAT_RICH_POST: bool = False
+    FEATURE_EXPERT_TEAM: bool = True
     FEATURE_PROMPT_PROFILES: bool = True
     FEATURE_WORKFLOW_STEPS: bool = True
     FEATURE_AGENT_TEAM: bool = True

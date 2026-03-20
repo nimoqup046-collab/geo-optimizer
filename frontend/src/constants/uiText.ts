@@ -28,6 +28,7 @@ export const UI_TEXT = {
       brands: '品牌档案',
       assets: '素材池',
       analysis: '分析中心',
+      expertTeam: '专家团队',
       workshop: '内容工坊',
       distribution: '分发与反馈'
     }

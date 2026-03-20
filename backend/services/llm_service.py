@@ -140,6 +140,52 @@ def build_system_prompt(role: str, context: Optional[Dict[str, Any]] = None) -> 
     return base
 
 
+async def generate_with_expert_role(
+    role: str,
+    prompt: str,
+    context: Optional[Dict[str, Any]] = None,
+    provider: str = "openrouter",
+    model: Optional[str] = None,
+    temperature: float = 0.3,
+    max_tokens: int = 4000,
+) -> str:
+    """Generate content using an expert role's dedicated model via OpenRouter.
+
+    Automatically selects the correct model for the role from config.
+    Falls back to default provider if OpenRouter is unavailable.
+    """
+    from config import settings as _settings
+
+    role_model_map = {
+        "chief_strategist": _settings.EXPERT_STRATEGY_MODEL,
+        "content_architect": _settings.EXPERT_CONTENT_MODEL,
+        "data_analyst": _settings.EXPERT_ANALYSIS_MODEL,
+        "quality_reviewer": _settings.EXPERT_REVIEW_MODEL,
+        "geo_optimizer": _settings.EXPERT_GEO_MODEL,
+    }
+    use_model = model or role_model_map.get(role, _settings.OPENROUTER_MODEL)
+
+    from services.expert_prompts import get_expert_system_prompt
+
+    system_prompt = get_expert_system_prompt(role, context)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        async with LLMService(provider) as llm:
+            return await llm.generate(
+                messages, model=use_model, temperature=temperature, max_tokens=max_tokens
+            )
+    except Exception:
+        # Fallback to default provider.
+        async with LLMService() as llm:
+            return await llm.generate(
+                messages, temperature=temperature, max_tokens=max_tokens
+            )
+
+
 async def generate_content(
     prompt: str,
     role: str = "content_generator",

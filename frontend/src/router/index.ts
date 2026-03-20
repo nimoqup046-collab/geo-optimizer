@@ -50,6 +50,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '内容工坊' }
       },
       {
+        path: 'expert-team',
+        name: 'ExpertTeam',
+        component: lazyView(() => import('@/views/ExpertTeam.vue')),
+        meta: { title: '专家团队' }
+      },
+      {
         path: 'distribution',
         name: 'DistributionFeedback',
         component: lazyView(() => import('@/views/DistributionFeedback.vue')),
