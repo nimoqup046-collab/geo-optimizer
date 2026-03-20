@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+backend/.env
+backend/.venv/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.local
+frontend/dist/
+
+# Data artifacts
+data/*.db
+data/*.db-journal
+data/uploads/*
+data/exports/*
+data/reports/*
+data/run/*
+!data/.gitkeep
+
+# Deployment staging and local temp probes
+_deploy_backend*/
+_deploy_frontend*/
+tmp_*
+railway_*
+%SystemDrive%/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
