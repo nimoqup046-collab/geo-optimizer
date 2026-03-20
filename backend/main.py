@@ -21,6 +21,7 @@ from api.publish_tasks import router as publish_tasks_router
 from api.system import router as system_router
 from api.workflow_steps import router as workflow_steps_router
 from api.expert_team import router as expert_team_router
+from api.industries import router as industries_router
 from config import settings
 from database import engine, init_db
 from services.bootstrap import ensure_default_workspace
@@ -90,6 +91,7 @@ app.include_router(prompt_profiles_router, prefix=settings.API_V1_PREFIX)
 app.include_router(workflow_steps_router, prefix=settings.API_V1_PREFIX)
 app.include_router(creative_router, prefix=settings.API_V1_PREFIX)
 app.include_router(expert_team_router, prefix=settings.API_V1_PREFIX)
+app.include_router(industries_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health", tags=["system"])

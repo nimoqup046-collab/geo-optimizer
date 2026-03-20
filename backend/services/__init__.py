@@ -8,9 +8,15 @@ from .analysis_engine import (
 )
 from .asset_parser import parse_text_from_file
 from .bootstrap import ensure_default_workspace
+from .industry_config import get_industry_config, list_industries
 from .llm_service import generate_content
 from .storage import storage_service
-from .template_manager import format_generation_prompt, get_platform_rule
+from .template_manager import (
+    SUPPORTED_PLATFORMS,
+    format_generation_prompt,
+    get_platform_rule,
+    get_platform_style,
+)
 
 __all__ = [
     "ensure_default_workspace",
@@ -19,6 +25,10 @@ __all__ = [
     "generate_content",
     "format_generation_prompt",
     "get_platform_rule",
+    "get_platform_style",
+    "get_industry_config",
+    "list_industries",
+    "SUPPORTED_PLATFORMS",
     "classify_keyword",
     "estimate_difficulty",
     "score_keyword",
