@@ -65,6 +65,7 @@ import {
   ApertureOutline,
   CubeOutline,
   NewspaperOutline,
+  PeopleOutline,
   PulseOutline,
   RocketOutline
 } from '@vicons/ionicons5'
@@ -96,6 +97,7 @@ const menuOptions = [
   { label: UI_TEXT.layout.menu.brands, key: 'Brands', icon: renderIcon(CubeOutline) },
   { label: UI_TEXT.layout.menu.assets, key: 'Assets', icon: renderIcon(AlbumsOutline) },
   { label: UI_TEXT.layout.menu.analysis, key: 'AnalysisCenter', icon: renderIcon(ApertureOutline) },
+  { label: UI_TEXT.layout.menu.expertTeam, key: 'ExpertTeam', icon: renderIcon(PeopleOutline) },
   { label: UI_TEXT.layout.menu.workshop, key: 'Workshop', icon: renderIcon(NewspaperOutline) },
   {
     label: UI_TEXT.layout.menu.distribution,

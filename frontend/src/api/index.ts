@@ -329,6 +329,16 @@ export type AnalysisResult = {
   content_suggestions: string[]
 }
 
+// Re-export expert team API.
+export { expertTeamApi } from './expertTeam'
+export type {
+  TeamReportResponse,
+  ExpertRoleConfig,
+  GEOScores,
+  StrategyResult,
+  ExpertOutput
+} from './expertTeam'
+
 export const keywordApi = {
   getList: async (_params?: any) => [] as Keyword[],
   getDetail: async (_id: string) => ({} as Keyword),

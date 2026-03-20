@@ -32,9 +32,16 @@
             placeholder="可选"
           />
         </n-form-item>
+        <n-form-item label="生成模式">
+          <n-select
+            v-model:value="generateForm.mode"
+            :options="modeOptions"
+            style="width: 200px"
+          />
+        </n-form-item>
         <n-form-item>
           <n-button type="primary" :loading="generating" @click="generate">
-            {{ UI_TEXT.workshop.generate }}
+            {{ generateForm.mode === 'expert' ? '专家协作生成' : UI_TEXT.workshop.generate }}
           </n-button>
         </n-form-item>
       </n-form>
@@ -124,11 +131,17 @@ const platformOptions = [
   { label: '短视频脚本', value: 'video' }
 ]
 
+const modeOptions = [
+  { label: '标准生成', value: 'standard' },
+  { label: '专家协作生成', value: 'expert' }
+]
+
 const generateForm = reactive({
   report_id: '',
   count: 1,
   target_platforms: ['wechat', 'xiaohongshu', 'zhihu', 'video'],
-  prompt_profile_id: null as string | null
+  prompt_profile_id: null as string | null,
+  mode: 'standard'
 })
 
 const promptProfileForm = reactive({

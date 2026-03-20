@@ -40,10 +40,34 @@
         <n-space justify="space-between" align="center">
           <n-text strong>{{ activeReport.title }}</n-text>
           <n-space>
+            <n-button size="small" type="info" :loading="expertAnalyzing" @click="runExpertAnalysis">
+              专家深度分析
+            </n-button>
             <n-button size="small" @click="exportReport('md')">导出报告 MD</n-button>
             <n-button size="small" @click="exportReport('pdf')">导出报告 PDF</n-button>
           </n-space>
         </n-space>
+
+        <!-- GEO Score Display -->
+        <n-card v-if="geoScores" size="small" title="GEO 评分">
+          <n-grid :cols="5" :x-gap="8">
+            <n-grid-item>
+              <n-statistic label="综合" :value="geoScores.overall.toFixed(1)" />
+            </n-grid-item>
+            <n-grid-item>
+              <n-statistic label="可引用性" :value="geoScores.citability.toFixed(1)" />
+            </n-grid-item>
+            <n-grid-item>
+              <n-statistic label="断言密度" :value="geoScores.claim_density.toFixed(1)" />
+            </n-grid-item>
+            <n-grid-item>
+              <n-statistic label="可提取性" :value="geoScores.extractability.toFixed(1)" />
+            </n-grid-item>
+            <n-grid-item>
+              <n-statistic label="可读性" :value="geoScores.readability.toFixed(1)" />
+            </n-grid-item>
+          </n-grid>
+        </n-card>
 
         <n-text>{{ activeReport.llm_summary }}</n-text>
         <n-list bordered>
@@ -60,15 +84,18 @@
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NButton, useMessage } from 'naive-ui'
 import { analysisApi, brandApi, type AnalysisReport } from '@/api'
+import { expertTeamApi, type GEOScores } from '@/api/expertTeam'
 import { UI_TEXT } from '@/constants/uiText'
 
 const message = useMessage()
 const running = ref(false)
 const loading = ref(false)
+const expertAnalyzing = ref(false)
 const loadError = ref('')
 const brands = ref<any[]>([])
 const reports = ref<AnalysisReport[]>([])
 const activeReport = ref<AnalysisReport | null>(null)
+const geoScores = ref<GEOScores | null>(null)
 
 const form = reactive({
   brand_id: '',
@@ -138,6 +165,33 @@ const exportReport = async (format: 'md' | 'pdf') => {
     message.success(`报告已导出为 ${format.toUpperCase()}`)
   } catch (error: any) {
     message.error(`导出失败：${error?.message || UI_TEXT.common.unknownError}`)
+  }
+}
+
+const runExpertAnalysis = async () => {
+  if (!form.brand_id) {
+    message.warning('请先选择品牌')
+    return
+  }
+  const seeds = splitLines(form.keyword_input)
+  if (seeds.length === 0) {
+    message.warning('请输入关键词')
+    return
+  }
+  expertAnalyzing.value = true
+  try {
+    const report = await expertTeamApi.analyze({
+      brand_id: form.brand_id,
+      keyword_seeds: seeds,
+      competitor_keywords: splitLines(form.competitor_input)
+    })
+    geoScores.value = report.geo_scores
+    message.success(`专家团队分析完成，综合评分: ${report.geo_scores.overall.toFixed(1)}`)
+    await load()
+  } catch (error: any) {
+    message.error(`专家分析失败: ${error?.message || '未知错误'}`)
+  } finally {
+    expertAnalyzing.value = false
   }
 }
 

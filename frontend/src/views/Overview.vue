@@ -24,12 +24,38 @@
       </n-space>
     </n-card>
 
-    <n-grid :cols="4" :x-gap="12">
+    <n-grid :cols="5" :x-gap="12">
       <n-grid-item><n-statistic :label="UI_TEXT.overview.cards.brands" :value="stats.brands" /></n-grid-item>
       <n-grid-item><n-statistic :label="UI_TEXT.overview.cards.assets" :value="stats.assets" /></n-grid-item>
       <n-grid-item><n-statistic :label="UI_TEXT.overview.cards.reports" :value="stats.reports" /></n-grid-item>
       <n-grid-item><n-statistic :label="UI_TEXT.overview.cards.contents" :value="stats.contents" /></n-grid-item>
+      <n-grid-item><n-statistic label="专家报告" :value="stats.expertReports" /></n-grid-item>
     </n-grid>
+
+    <!-- Expert Team Status -->
+    <n-card title="专家团队" :bordered="false">
+      <n-space align="center">
+        <n-tag :type="expertTeamEnabled ? 'success' : 'warning'">
+          {{ expertTeamEnabled ? '已启用' : '未启用' }}
+        </n-tag>
+        <n-text depth="3">
+          模型: Claude Sonnet 4.6 + Gemini 3.1 Pro (via OpenRouter)
+        </n-text>
+      </n-space>
+      <n-descriptions
+        v-if="expertRoles.length > 0"
+        bordered
+        size="small"
+        :column="3"
+        style="margin-top: 12px"
+      >
+        <n-descriptions-item v-for="role in expertRoles" :key="role.role" :label="role.label">
+          <n-tag :type="role.model.includes('claude') ? 'info' : 'success'" size="small">
+            {{ role.model.split('/').pop() }}
+          </n-tag>
+        </n-descriptions-item>
+      </n-descriptions>
+    </n-card>
 
     <n-card :title="UI_TEXT.overview.readiness.title" :bordered="false">
       <n-space align="center">
@@ -112,6 +138,7 @@ import {
   type DemoStatusResponse,
   type ReadinessResponse
 } from '@/api'
+import { expertTeamApi, type ExpertRoleConfig } from '@/api/expertTeam'
 import { UI_TEXT } from '@/constants/uiText'
 import { fetchDemoStatus, runDemoSeed } from '@/services/demoSeed'
 
@@ -125,8 +152,11 @@ const stats = ref({
   brands: 0,
   assets: 0,
   reports: 0,
-  contents: 0
+  contents: 0,
+  expertReports: 0
 })
+const expertTeamEnabled = ref(false)
+const expertRoles = ref<ExpertRoleConfig[]>([])
 
 const taskStats = ref({
   queued: 0,
@@ -151,7 +181,7 @@ const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [brands, assets, reportList, contents, tasks, insightList, readinessData, ds] =
+    const [brands, assets, reportList, contents, tasks, insightList, readinessData, ds, teamConfig] =
       await Promise.all([
         brandApi.list(),
         assetApi.list(),
@@ -160,15 +190,19 @@ const load = async () => {
         publishApi.list(),
         optimizationApi.list(),
         systemApi.readiness(),
-        fetchDemoStatus()
+        fetchDemoStatus(),
+        expertTeamApi.getConfig().catch(() => ({ feature_enabled: false, roles: [] }))
       ])
 
     stats.value = {
       brands: brands.length,
       assets: assets.length,
       reports: reportList.length,
-      contents: contents.length
+      contents: contents.length,
+      expertReports: reportList.filter((r) => r.title?.includes('专家')).length
     }
+    expertTeamEnabled.value = teamConfig.feature_enabled
+    expertRoles.value = teamConfig.roles || []
     reports.value = reportList
     insights.value = insightList
     readiness.value = readinessData
