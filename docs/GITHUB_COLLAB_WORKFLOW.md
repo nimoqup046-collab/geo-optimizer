@@ -38,6 +38,15 @@
   2. 合并前至少一次 smoke 验证
   3. 禁止把生产密钥和本地日志文件提交到 PR
 
+### 3.1 私有仓分支保护限制说明
+
+- 当前账号套餐下，GitHub 私有仓无法启用服务器端 Branch Protection（API 返回 403）。
+- 已采用本地替代方案：
+  - `scripts/install_main_guard_hook.py`
+  - `启用防误推main.bat`
+- 效果：默认阻止直接 `git push origin main`，必须走分支 + PR。
+- 紧急放行（仅应急）：`ALLOW_MAIN_PUSH=1 git push origin main`
+
 ## 4. 安全基线
 
 1. 已暴露过的密钥必须轮换：
