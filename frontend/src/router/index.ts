@@ -60,6 +60,18 @@ const routes: RouteRecordRaw[] = [
         name: 'DistributionFeedback',
         component: lazyView(() => import('@/views/DistributionFeedback.vue')),
         meta: { title: '分发与反馈' }
+      },
+      {
+        path: 'seo-audit',
+        name: 'SeoAudit',
+        component: lazyView(() => import('@/views/SeoAudit.vue')),
+        meta: { title: 'SEO 审计' }
+      },
+      {
+        path: 'content-calendar',
+        name: 'ContentCalendar',
+        component: lazyView(() => import('@/views/ContentCalendar.vue')),
+        meta: { title: '内容日历' }
       }
     ]
   }

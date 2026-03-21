@@ -12,6 +12,9 @@ import uuid
 from database import get_db
 from models.keyword import Keyword, KeywordCategory
 from services.llm_service import generate_content, build_system_prompt
+from services.keyword_researcher import KeywordResearcher
+from services.topic_cluster import TopicClusterEngine
+from services.content_calendar import ContentCalendarGenerator
 
 
 router = APIRouter(prefix="/keywords", tags=["关键词"])
@@ -335,3 +338,106 @@ async def batch_analyze_keywords(
             })
 
     return results
+
+
+# ==================== 深度研究端点 ====================
+
+
+class KeywordResearchRequest(BaseModel):
+    """关键词深度研究请求"""
+    topic: str = Field(..., description="研究主题", min_length=1)
+    brand_name: Optional[str] = Field(None, description="品牌名称")
+    industry: Optional[str] = Field(None, description="行业")
+    competitors: List[str] = Field(default_factory=list, description="竞品列表")
+
+
+class TopicClusterRequest(BaseModel):
+    """Topic Cluster 构建请求"""
+    topic: str = Field(..., description="主题", min_length=1)
+    keywords: List[str] = Field(default_factory=list, description="已有关键词列表")
+    brand_name: Optional[str] = Field(None, description="品牌名称")
+    industry: Optional[str] = Field(None, description="行业")
+    max_clusters: int = Field(default=3, ge=1, le=5, description="最大聚类数")
+
+
+class ContentCalendarRequest(BaseModel):
+    """内容日历生成请求"""
+    topic: str = Field(..., description="主题", min_length=1)
+    keywords: List[str] = Field(default_factory=list, description="关键词列表")
+    brand_name: Optional[str] = Field(None, description="品牌名称")
+    industry: Optional[str] = Field(None, description="行业")
+    weeks: int = Field(default=4, ge=1, le=12, description="规划周数")
+
+
+@router.post("/research", summary="深度关键词研究")
+async def keyword_research(request: KeywordResearchRequest):
+    """
+    执行多维关键词研究，输出趋势分析、商业关键词、长尾机会和 GEO 建议。
+
+    融合 seo-geo-claude-skills 的 keyword-research 分析框架，
+    结合本地分析引擎的关键词分类和难度评估。
+    """
+    brand_context = {
+        "brand_name": request.brand_name or "",
+        "industry": request.industry or "",
+        "competitors": request.competitors,
+    }
+
+    try:
+        researcher = KeywordResearcher()
+        report = await researcher.research(request.topic, brand_context)
+        return report.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"关键词研究失败：{str(e)}")
+
+
+@router.post("/clusters", summary="构建 Topic Clusters")
+async def build_topic_clusters(request: TopicClusterRequest):
+    """
+    基于主题和关键词构建 Topic Cluster 映射。
+
+    生成支柱页面（Pillar Page）和集群页面（Cluster Pages）的结构化映射，
+    包含内链策略建议。
+    """
+    brand_context = {
+        "brand_name": request.brand_name or "",
+        "industry": request.industry or "",
+    }
+
+    try:
+        engine = TopicClusterEngine()
+        result = await engine.build_clusters(
+            topic=request.topic,
+            keywords=request.keywords,
+            brand_context=brand_context,
+            max_clusters=request.max_clusters,
+        )
+        return result.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Topic Cluster 构建失败：{str(e)}")
+
+
+@router.post("/calendar", summary="生成内容日历")
+async def generate_content_calendar(request: ContentCalendarRequest):
+    """
+    基于主题和关键词生成内容发布日历。
+
+    按 P0/P1/P2 优先级排序，覆盖多平台（公众号/小红书/知乎/短视频），
+    包含内容类型和简要 brief。
+    """
+    brand_context = {
+        "brand_name": request.brand_name or "",
+        "industry": request.industry or "",
+    }
+
+    try:
+        generator = ContentCalendarGenerator()
+        result = await generator.generate(
+            topic=request.topic,
+            keywords=request.keywords,
+            brand_context=brand_context,
+            weeks=request.weeks,
+        )
+        return result.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"内容日历生成失败：{str(e)}")

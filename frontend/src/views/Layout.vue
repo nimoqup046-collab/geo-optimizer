@@ -63,11 +63,13 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   AlbumsOutline,
   ApertureOutline,
+  CalendarOutline,
   CubeOutline,
   NewspaperOutline,
   PeopleOutline,
   PulseOutline,
-  RocketOutline
+  RocketOutline,
+  SearchOutline
 } from '@vicons/ionicons5'
 import { NIcon, useMessage } from 'naive-ui'
 import { UI_TEXT } from '@/constants/uiText'
@@ -103,7 +105,9 @@ const menuOptions = [
     label: UI_TEXT.layout.menu.distribution,
     key: 'DistributionFeedback',
     icon: renderIcon(RocketOutline)
-  }
+  },
+  { label: 'SEO 审计', key: 'SeoAudit', icon: renderIcon(SearchOutline) },
+  { label: '内容日历', key: 'ContentCalendar', icon: renderIcon(CalendarOutline) }
 ]
 
 function handleMenuSelect(key: string): void {
