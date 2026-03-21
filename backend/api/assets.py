@@ -97,9 +97,10 @@ async def upload_asset(
     if not brand.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="未找到品牌")
 
-    file_size = getattr(file, "size", None)
-    if file_size and file_size > settings.MAX_UPLOAD_SIZE:
+    contents = await file.read()
+    if len(contents) > settings.MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=400, detail="上传文件超过大小限制")
+    await file.seek(0)
 
     saved_name, stored_path = await storage_service.save_upload(file)
     parsed_text, parse_status = parse_text_from_file(stored_path)

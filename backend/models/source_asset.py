@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from sqlalchemy import DateTime, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+
+_utcnow = lambda: datetime.now(timezone.utc)
 
 
 class SourceAsset(Base):
@@ -31,7 +33,7 @@ class SourceAsset(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     tags: Mapped[dict] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(50), default="ready")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=_utcnow, onupdate=_utcnow
     )

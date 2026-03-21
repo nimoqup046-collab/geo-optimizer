@@ -59,7 +59,7 @@ async def internal_api_key_guard(request: Request, call_next):
         "/api/v1/system/readiness",
     }:
         return await call_next(request)
-    if request.url.path.startswith("/api/v1/demo/"):
+    if request.url.path.startswith("/api/v1/demo/") and settings.DEBUG:
         return await call_next(request)
 
     provided = request.headers.get("x-api-key")

@@ -1,10 +1,14 @@
+import asyncio
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
 from zhipuai import ZhipuAI
 
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class LLMService:
@@ -50,7 +54,8 @@ class LLMService:
         max_tokens: int,
         **kwargs,
     ) -> str:
-        response = self.client.chat.completions.create(
+        response = await asyncio.to_thread(
+            self.client.chat.completions.create,
             model=model,
             messages=messages,
             temperature=temperature,
@@ -179,7 +184,7 @@ async def generate_with_expert_role(
                 messages, model=use_model, temperature=temperature, max_tokens=max_tokens
             )
     except Exception:
-        # Fallback to default provider.
+        logger.warning("Expert role '%s' with provider '%s' failed, falling back to default", role, provider, exc_info=True)
         async with LLMService() as llm:
             return await llm.generate(
                 messages, temperature=temperature, max_tokens=max_tokens
