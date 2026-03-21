@@ -1,3 +1,5 @@
+import logging
+from collections import defaultdict
 from datetime import datetime
 from typing import List, Optional
 import uuid
@@ -16,6 +18,8 @@ from models.report import AnalysisReport
 from services.llm_service import generate_content
 from services.prompt_assembler import resolve_prompt_bundle
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -185,6 +189,7 @@ async def generate_content_from_report(
                     max_tokens=2200,
                 )
             except Exception:
+                logger.exception("LLM generation failed for platform=%s topic=%s, using fallback", platform, topic)
                 generated = fallback_variant_text(
                     brand_name=brand.name,
                     topic=topic,
@@ -265,12 +270,19 @@ async def list_content_items(
     result = await db.execute(query.order_by(ContentItem.created_at.desc()))
     items = list(result.scalars().all())
 
+    # Batch-load all variants in a single query to avoid N+1.
+    item_ids = [item.id for item in items]
+    variants_result = await db.execute(
+        select(ContentVariant).where(ContentVariant.content_item_id.in_(item_ids))
+    ) if item_ids else None
+    all_variants = list(variants_result.scalars().all()) if variants_result else []
+    variants_by_item: dict[str, list] = defaultdict(list)
+    for v in all_variants:
+        variants_by_item[v.content_item_id].append(v)
+
     responses: List[ContentItemResponse] = []
     for item in items:
-        variants_result = await db.execute(
-            select(ContentVariant).where(ContentVariant.content_item_id == item.id)
-        )
-        variants = list(variants_result.scalars().all())
+        variants = variants_by_item.get(item.id, [])
         responses.append(
             ContentItemResponse(
                 id=item.id,

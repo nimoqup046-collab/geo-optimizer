@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     APP_NAME: str = "GEO Feedback Optimizer"
     APP_VERSION: str = "1.1.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
 
     # Railway: set to postgres URL in env.
@@ -45,8 +45,8 @@ class Settings(BaseSettings):
     EXPERT_STRATEGY_MODEL: str = "anthropic/claude-sonnet-4-6"
     EXPERT_CONTENT_MODEL: str = "anthropic/claude-sonnet-4-6"
     EXPERT_REVIEW_MODEL: str = "anthropic/claude-sonnet-4-6"
-    EXPERT_ANALYSIS_MODEL: str = "google/gemini-3.1-pro"
-    EXPERT_GEO_MODEL: str = "google/gemini-3.1-pro"
+    EXPERT_ANALYSIS_MODEL: str = "google/gemini-2.5-pro-preview"
+    EXPERT_GEO_MODEL: str = "google/gemini-2.5-pro-preview"
 
     # Feature flags.
     FEATURE_WECHAT_RICH_POST: bool = False

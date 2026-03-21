@@ -3,9 +3,11 @@
 """
 from sqlalchemy import String, Integer, Float, JSON, Boolean, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
+from datetime import datetime, timezone
 from database import Base
 import uuid
+
+_utcnow = lambda: datetime.now(timezone.utc)
 
 
 class KeywordCategory:
@@ -45,8 +47,8 @@ class Keyword(Base):
     generated_content_count: Mapped[int] = mapped_column(Integer, default=0)  # 已生成内容数量
 
     # 时间戳
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
     last_analyzed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)  # 最后分析时间
 
     # 备注

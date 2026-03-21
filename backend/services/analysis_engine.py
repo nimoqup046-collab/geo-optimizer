@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from collections import Counter
 from typing import Any, Dict, List, Optional
@@ -6,6 +7,8 @@ from typing import Any, Dict, List, Optional
 from config import settings
 from services.agent_team import assemble_team_report, compute_geo_score, run_agent_team
 from services.llm_service import generate_content
+
+logger = logging.getLogger(__name__)
 
 
 LONG_TAIL_HINTS = [
@@ -287,6 +290,7 @@ async def build_llm_summary(
             return _fallback_summary(payload)
         return text
     except Exception:
+        logger.exception("LLM summary generation failed, using fallback")
         return _fallback_summary(payload)
 
 
@@ -306,4 +310,5 @@ async def build_agent_team_summary(
         assembled = assemble_team_report(reports)
         return assembled if assembled.strip() else _fallback_summary(payload)
     except Exception:
+        logger.exception("Agent team summary failed, using fallback")
         return _fallback_summary(payload)
