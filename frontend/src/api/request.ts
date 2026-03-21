@@ -13,7 +13,7 @@ const instance: AxiosInstance = axios.create({
 
 instance.interceptors.request.use(
   (config) => {
-    const runtimeKey = localStorage.getItem('geo_internal_api_key') || import.meta.env.VITE_INTERNAL_API_KEY
+    const runtimeKey = sessionStorage.getItem('geo_internal_api_key') || import.meta.env.VITE_INTERNAL_API_KEY
     if (runtimeKey) {
       config.headers['x-api-key'] = runtimeKey
     }

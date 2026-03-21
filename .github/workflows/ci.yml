@@ -30,6 +30,11 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio httpx
 
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check .
+
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short
 

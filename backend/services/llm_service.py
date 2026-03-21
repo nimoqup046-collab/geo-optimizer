@@ -11,11 +11,22 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 
+_shared_http_client: Optional[httpx.AsyncClient] = None
+
+
+def _get_shared_http_client() -> httpx.AsyncClient:
+    global _shared_http_client
+    if _shared_http_client is None or _shared_http_client.is_closed:
+        _shared_http_client = httpx.AsyncClient(timeout=60.0)
+    return _shared_http_client
+
+
 class LLMService:
     def __init__(self, provider: Optional[str] = None):
         self.provider = provider or settings.DEFAULT_LLM_PROVIDER
         self.client = None
         self.model = ""
+        self._owns_client = False
         self._init_client()
 
     def _init_client(self):
@@ -23,10 +34,10 @@ class LLMService:
             self.client = ZhipuAI(api_key=settings.ZHIPU_API_KEY)
             self.model = settings.ZHIPU_MODEL
         elif self.provider == "doubao":
-            self.client = httpx.AsyncClient(timeout=60.0)
+            self.client = _get_shared_http_client()
             self.model = settings.DOUBAO_MODEL
         elif self.provider == "openrouter":
-            self.client = httpx.AsyncClient(timeout=60.0)
+            self.client = _get_shared_http_client()
             self.model = settings.OPENROUTER_MODEL
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
@@ -123,8 +134,7 @@ class LLMService:
         return payload["choices"][0]["message"]["content"]
 
     async def close(self):
-        if isinstance(self.client, httpx.AsyncClient):
-            await self.client.aclose()
+        pass  # shared httpx client is managed at module level
 
     async def __aenter__(self):
         return self
