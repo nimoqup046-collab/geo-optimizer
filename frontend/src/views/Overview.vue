@@ -95,6 +95,30 @@
       </n-space>
     </n-card>
 
+    <!-- Performance Insights -->
+    <n-card title="效果反馈闭环" :bordered="false">
+      <n-space align="center" style="margin-bottom: 12px">
+        <n-tag :type="perfData.total_records > 0 ? 'success' : 'warning'">
+          {{ perfData.total_records > 0 ? `${perfData.total_records} 条关联数据` : '暂无关联数据' }}
+        </n-tag>
+        <n-text depth="3">GEO 评分 × 内容效果关联分析</n-text>
+      </n-space>
+      <n-grid :cols="2" :x-gap="12" v-if="perfData.insights.length > 0">
+        <n-grid-item v-for="(insight, idx) in perfData.insights" :key="idx">
+          <n-card size="small" :bordered="true">
+            <template #header>{{ insight.title }}</template>
+            <n-text>{{ insight.description }}</n-text>
+            <n-list size="small" style="margin-top: 8px">
+              <n-list-item v-for="(action, aIdx) in insight.action_items" :key="aIdx">
+                <n-text depth="2">{{ action }}</n-text>
+              </n-list-item>
+            </n-list>
+          </n-card>
+        </n-grid-item>
+      </n-grid>
+      <n-empty v-else description="录入内容效果数据后，系统将自动分析 GEO 评分与效果的关联" />
+    </n-card>
+
     <n-grid :cols="2" :x-gap="12">
       <n-grid-item>
         <n-card :title="UI_TEXT.overview.latestReports" :bordered="false">
@@ -135,8 +159,10 @@ import {
   optimizationApi,
   publishApi,
   systemApi,
+  performanceInsightsApi,
   type DemoStatusResponse,
-  type ReadinessResponse
+  type ReadinessResponse,
+  type CorrelationResponse
 } from '@/api'
 import { expertTeamApi, type ExpertRoleConfig } from '@/api/expertTeam'
 import { UI_TEXT } from '@/constants/uiText'
@@ -174,6 +200,7 @@ const readiness = ref<ReadinessResponse>({
 const demoStatus = ref<DemoStatusResponse | null>(null)
 const reports = ref<any[]>([])
 const insights = ref<any[]>([])
+const perfData = ref<CorrelationResponse>({ correlations: [], insights: [], total_records: 0 })
 
 const formatTime = (value: string) => new Date(value).toLocaleString()
 
@@ -181,7 +208,7 @@ const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [brands, assets, reportList, contents, tasks, insightList, readinessData, ds, teamConfig] =
+    const [brands, assets, reportList, contents, tasks, insightList, readinessData, ds, teamConfig, perfCorrelation] =
       await Promise.all([
         brandApi.list(),
         assetApi.list(),
@@ -191,7 +218,8 @@ const load = async () => {
         optimizationApi.list(),
         systemApi.readiness(),
         fetchDemoStatus(),
-        expertTeamApi.getConfig().catch(() => ({ feature_enabled: false, roles: [] }))
+        expertTeamApi.getConfig().catch(() => ({ feature_enabled: false, roles: [] })),
+        performanceInsightsApi.getCorrelation().catch(() => ({ correlations: [], insights: [], total_records: 0 }))
       ])
 
     stats.value = {
@@ -207,6 +235,7 @@ const load = async () => {
     insights.value = insightList
     readiness.value = readinessData
     demoStatus.value = ds
+    perfData.value = perfCorrelation as CorrelationResponse
 
     taskStats.value = {
       queued: tasks.filter((task) => task.status === 'queued').length,

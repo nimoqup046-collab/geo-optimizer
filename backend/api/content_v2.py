@@ -15,6 +15,8 @@ from models.content import ContentItem, ContentStatus, ContentVariant
 from models.report import AnalysisReport
 from services.llm_service import generate_content
 from services.prompt_assembler import resolve_prompt_bundle
+from services.geo_scorer import compute_geo_score
+from services.expert_team import run_expert_pipeline
 
 
 router = APIRouter(prefix="/content", tags=["content"])
@@ -31,6 +33,7 @@ class ContentGenerateRequest(BaseModel):
     count: int = Field(default=1, ge=1, le=5)
     llm_provider: Optional[str] = None
     prompt_profile_id: Optional[str] = None
+    mode: str = Field(default="standard", description="standard or expert")
 
 
 class ContentVariantResponse(BaseModel):
@@ -138,6 +141,33 @@ async def generate_content_from_report(
     if request.count > settings.MAX_CONTENT_PER_REQUEST:
         raise HTTPException(status_code=400, detail="生成数量超过最大限制")
 
+    # Expert mode: run expert pipeline for strategy + optimization context.
+    expert_context_text = ""
+    if request.mode == "expert" and settings.FEATURE_EXPERT_TEAM:
+        try:
+            brand_data = {
+                "name": brand.name,
+                "industry": brand.industry,
+                "region": brand.region,
+                "tone_of_voice": brand.tone_of_voice,
+                "call_to_action": brand.call_to_action,
+                "content_boundaries": brand.content_boundaries,
+            }
+            team_report = await run_expert_pipeline(
+                brand_data=brand_data,
+                keyword_layers=report.keyword_layers or {},
+                gap_analysis=report.gap_analysis or {},
+                recommendations=report.recommendations or [],
+                target_platforms=target_platforms,
+                provider=request.llm_provider or "openrouter",
+            )
+            expert_context_text = (
+                f"\n\n## 专家团队策略指导\n{team_report.strategy.content[:800]}\n"
+                f"\n## GEO 优化建议\n{team_report.geo_optimization.content[:600]}\n"
+            )
+        except Exception:
+            expert_context_text = ""
+
     response_items: List[ContentItemResponse] = []
     for idx in range(request.count):
         topic = keywords_ranked[idx % len(keywords_ranked)]
@@ -170,8 +200,12 @@ async def generate_content_from_report(
                 prompt_profile_id=request.prompt_profile_id,
             )
             try:
+                prompt_text = bundle.user_prompt
+                if expert_context_text:
+                    prompt_text = prompt_text + expert_context_text
+
                 generated = await generate_content(
-                    prompt=bundle.user_prompt,
+                    prompt=prompt_text,
                     role=bundle.role,
                     provider=request.llm_provider,
                     context={
@@ -193,6 +227,22 @@ async def generate_content_from_report(
                 )
 
             title, body = parse_title_and_body(generated, topic)
+
+            # Compute GEO scores for expert mode.
+            gen_meta: dict = {
+                "topic": topic,
+                "report_id": report.id,
+                "prompt_profile_id": bundle.profile_id,
+                "prompt_profile_name": bundle.profile_name,
+                "mode": request.mode,
+            }
+            if request.mode == "expert":
+                try:
+                    geo_card = compute_geo_score(generated)
+                    gen_meta["geo_scores"] = geo_card.to_dict()
+                except Exception:
+                    pass
+
             variant = ContentVariant(
                 id=str(uuid.uuid4()),
                 content_item_id=item.id,
@@ -203,12 +253,7 @@ async def generate_content_from_report(
                 tags=suggest_tags(platform, topic),
                 llm_provider=request.llm_provider or settings.DEFAULT_LLM_PROVIDER,
                 llm_model="",
-                generation_meta={
-                    "topic": topic,
-                    "report_id": report.id,
-                    "prompt_profile_id": bundle.profile_id,
-                    "prompt_profile_name": bundle.profile_name,
-                },
+                generation_meta=gen_meta,
                 status=ContentStatus.DRAFT,
             )
             db.add(variant)

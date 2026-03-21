@@ -340,6 +340,14 @@ export type {
   ExpertOutput
 } from './expertTeam'
 
+// Re-export performance insights API.
+export { performanceInsightsApi } from './performance'
+export type {
+  CorrelationItem,
+  InsightItem,
+  CorrelationResponse
+} from './performance'
+
 export const keywordApi = {
   getList: async (_params?: any) => [] as Keyword[],
   getDetail: async (_id: string) => ({} as Keyword),
