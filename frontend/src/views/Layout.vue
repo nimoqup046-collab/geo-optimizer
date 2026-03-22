@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AlbumsOutline,
@@ -74,6 +74,7 @@ import {
 import { NIcon, useMessage } from 'naive-ui'
 import { UI_TEXT } from '@/constants/uiText'
 import { isDemoModeActive, setRealMode } from '@/services/demoMode'
+import { systemApi } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -83,6 +84,7 @@ const collapsed = ref(false)
 const activeKey = ref((route.name as string) || 'Overview')
 const apiKeyInput = ref(localStorage.getItem('geo_internal_api_key') || '')
 const isDemoActive = ref(isDemoModeActive())
+const featureFlags = ref<Record<string, boolean>>({})
 
 watch(
   () => route.name,
@@ -91,10 +93,28 @@ watch(
   }
 )
 
+onMounted(async () => {
+  try {
+    const res = await systemApi.readiness()
+    if (res.feature_flags) {
+      featureFlags.value = res.feature_flags
+    }
+  } catch {
+    // Feature flags unavailable — show MVP menu only.
+  }
+})
+
 const currentTitle = computed(() => String(route.meta.title || UI_TEXT.layout.defaultTitle))
 const renderIcon = (icon: any) => () => h(NIcon, null, { default: () => h(icon) })
 
-const menuOptions = [
+interface MenuItem {
+  label: string
+  key: string
+  icon: () => any
+  featureFlag?: string | null
+}
+
+const allMenuOptions: MenuItem[] = [
   { label: UI_TEXT.layout.menu.overview, key: 'Overview', icon: renderIcon(PulseOutline) },
   { label: UI_TEXT.layout.menu.brands, key: 'Brands', icon: renderIcon(CubeOutline) },
   { label: UI_TEXT.layout.menu.assets, key: 'Assets', icon: renderIcon(AlbumsOutline) },
@@ -106,9 +126,15 @@ const menuOptions = [
     key: 'DistributionFeedback',
     icon: renderIcon(RocketOutline)
   },
-  { label: 'SEO 审计', key: 'SeoAudit', icon: renderIcon(SearchOutline) },
-  { label: '内容日历', key: 'ContentCalendar', icon: renderIcon(CalendarOutline) }
+  { label: 'SEO 审计', key: 'SeoAudit', icon: renderIcon(SearchOutline), featureFlag: 'FEATURE_SEO_AUDIT' },
+  { label: '内容日历', key: 'ContentCalendar', icon: renderIcon(CalendarOutline), featureFlag: 'FEATURE_CONTENT_CALENDAR' }
 ]
+
+const menuOptions = computed(() =>
+  allMenuOptions.filter(
+    (item) => !item.featureFlag || featureFlags.value[item.featureFlag]
+  )
+)
 
 function handleMenuSelect(key: string): void {
   router.push({ name: key })

@@ -55,15 +55,31 @@ async def readiness_check():
     checks["feature_flags"] = {
         "ok": True,
         "detail": (
-            f"wechat_rich_post={settings.FEATURE_WECHAT_RICH_POST}, "
+            f"expert_team={settings.FEATURE_EXPERT_TEAM}, "
             f"prompt_profiles={settings.FEATURE_PROMPT_PROFILES}, "
-            f"workflow_steps={settings.FEATURE_WORKFLOW_STEPS}"
+            f"seo_audit={settings.FEATURE_SEO_AUDIT}"
         ),
     }
 
     all_ok = all(item["ok"] for item in checks.values())
+
+    feature_flags = {
+        "FEATURE_EXPERT_TEAM": settings.FEATURE_EXPERT_TEAM,
+        "FEATURE_PROMPT_PROFILES": settings.FEATURE_PROMPT_PROFILES,
+        "FEATURE_SEO_AUDIT": settings.FEATURE_SEO_AUDIT,
+        "FEATURE_CONTENT_CALENDAR": settings.FEATURE_CONTENT_CALENDAR,
+        "FEATURE_AI_CRAWL": settings.FEATURE_AI_CRAWL,
+        "FEATURE_SCHEMA_GEN": settings.FEATURE_SCHEMA_GEN,
+        "FEATURE_CASE_CORPUS": settings.FEATURE_CASE_CORPUS,
+        "FEATURE_ENTITY_AUTHORITY": settings.FEATURE_ENTITY_AUTHORITY,
+        "FEATURE_BRAND_CITATION": settings.FEATURE_BRAND_CITATION,
+        "FEATURE_WORKFLOW_STEPS": settings.FEATURE_WORKFLOW_STEPS,
+        "FEATURE_AGENT_TEAM": settings.FEATURE_AGENT_TEAM,
+    }
+
     return {
         "status": "ok" if all_ok else "degraded",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
+        "feature_flags": feature_flags,
     }

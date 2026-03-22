@@ -169,6 +169,7 @@ export interface ReadinessResponse {
   status: 'ok' | 'degraded'
   timestamp: string
   checks: Record<string, ReadinessCheck>
+  feature_flags?: Record<string, boolean>
 }
 
 export interface DemoBootstrapResponse {

@@ -4,7 +4,6 @@ from collections import Counter
 from typing import Any, Dict, List, Optional
 
 from config import settings
-from services.agent_team import assemble_team_report, compute_geo_score, run_agent_team
 from services.llm_service import generate_content
 
 
@@ -93,14 +92,36 @@ def score_keyword(
     has_qa_structure: bool = False,
     has_entity: bool = False,
 ) -> float:
-    return compute_geo_score(
-        keyword=keyword,
-        intent=intent,
-        difficulty=difficulty,
-        covered=covered,
-        has_qa_structure=has_qa_structure,
-        has_entity=has_entity,
-    )
+    if settings.FEATURE_AGENT_TEAM:
+        from services.agent_team import compute_geo_score
+        return compute_geo_score(
+            keyword=keyword,
+            intent=intent,
+            difficulty=difficulty,
+            covered=covered,
+            has_qa_structure=has_qa_structure,
+            has_entity=has_entity,
+        )
+
+    # 本地评分逻辑（不依赖 agent_team）.
+    score = 50.0
+    if intent == "brand":
+        score += 15
+    elif intent == "long_tail":
+        score += 10
+    elif intent == "competitor":
+        score += 5
+    if difficulty == "low":
+        score += 10
+    elif difficulty == "high":
+        score -= 5
+    if has_qa_structure:
+        score += 15
+    if has_entity:
+        score += 5
+    if not covered:
+        score += 5
+    return min(max(score, 0), 100)
 
 
 def has_qa_structure(keyword: str) -> bool:
@@ -302,6 +323,7 @@ async def build_agent_team_summary(
         return _fallback_summary(payload)
 
     try:
+        from services.agent_team import run_agent_team, assemble_team_report
         reports = await run_agent_team(payload, roles=roles)
         assembled = assemble_team_report(reports)
         return assembled if assembled.strip() else _fallback_summary(payload)

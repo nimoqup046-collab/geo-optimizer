@@ -65,13 +65,13 @@ const routes: RouteRecordRaw[] = [
         path: 'seo-audit',
         name: 'SeoAudit',
         component: lazyView(() => import('@/views/SeoAudit.vue')),
-        meta: { title: 'SEO 审计' }
+        meta: { title: 'SEO 审计', featureFlag: 'FEATURE_SEO_AUDIT' }
       },
       {
         path: 'content-calendar',
         name: 'ContentCalendar',
         component: lazyView(() => import('@/views/ContentCalendar.vue')),
-        meta: { title: '内容日历' }
+        meta: { title: '内容日历', featureFlag: 'FEATURE_CONTENT_CALENDAR' }
       }
     ]
   }
