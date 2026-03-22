@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     FEATURE_BRAND_CITATION: bool = False
     FEATURE_AGENT_TEAM: bool = False
     FEATURE_WORKFLOW_STEPS: bool = False
-    FEATURE_WECHAT_RICH_POST: bool = False
+    FEATURE_WECHAT_RICH_POST: bool = True
 
     # Storage backend.
     STORAGE_BACKEND: str = "local"  # local | s3

@@ -102,6 +102,22 @@
       </n-form>
       <n-data-table :columns="workflowColumns" :data="workflowSteps" style="margin-top: 8px" />
     </n-card>
+
+    <n-modal v-model:show="showWechatPreview" preset="card" title="公众号图文预览" style="width: 760px; max-height: 90vh;">
+      <n-space vertical :size="12">
+        <n-space>
+          <n-button type="primary" size="small" @click="downloadWechatHtml">下载 HTML</n-button>
+          <n-button size="small" @click="showWechatPreview = false">关闭</n-button>
+        </n-space>
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: auto; max-height: 70vh;">
+          <iframe
+            v-if="wechatPreviewHtml"
+            :srcdoc="wechatPreviewHtml"
+            style="width: 100%; height: 600px; border: none;"
+          />
+        </div>
+      </n-space>
+    </n-modal>
   </n-space>
 </template>
 
@@ -131,7 +147,10 @@ const items = ref<ContentItem[]>([])
 const promptProfiles = ref<PromptProfile[]>([])
 const workflowSteps = ref<WorkflowStep[]>([])
 
-const featureWechatRichPost = String(import.meta.env.VITE_FEATURE_WECHAT_RICH_POST ?? '0') === '1'
+const featureWechatRichPost = true
+const wechatGenerating = ref(false)
+const wechatPreviewHtml = ref('')
+const showWechatPreview = ref(false)
 
 const platformOptions = [
   { label: '公众号', value: 'wechat' },
@@ -251,10 +270,7 @@ const exportItem = async (row: ContentItem, format: 'md' | 'pdf') => {
 }
 
 const triggerWechatRichPost = async (row: ContentItem) => {
-  if (!featureWechatRichPost) {
-    message.warning('当前环境未开启公众号图文功能。')
-    return
-  }
+  wechatGenerating.value = true
   try {
     const wechatVariant = row.variants.find((item) => item.platform === 'wechat')
     const result = await creativeApi.createWechatRichPost({
@@ -262,9 +278,22 @@ const triggerWechatRichPost = async (row: ContentItem) => {
       variant_id: wechatVariant?.id
     })
     message.success(result.message)
+    // Show HTML preview if available
+    if (result.payload?.html) {
+      wechatPreviewHtml.value = result.payload.html
+      showWechatPreview.value = true
+    }
   } catch (error: any) {
-    message.error(`触发失败：${error?.message || UI_TEXT.common.unknownError}`)
+    message.error(`图文生成失败：${error?.message || UI_TEXT.common.unknownError}`)
+  } finally {
+    wechatGenerating.value = false
   }
+}
+
+const downloadWechatHtml = () => {
+  if (!wechatPreviewHtml.value) return
+  const blob = new Blob([wechatPreviewHtml.value], { type: 'text/html;charset=utf-8' })
+  downloadBlob(blob, `wechat_article_${Date.now()}.html`)
 }
 
 const createPromptProfile = async () => {
@@ -359,7 +388,7 @@ const columns = [
         ),
         h(
           NButton,
-          { size: 'small', disabled: !featureWechatRichPost, onClick: () => triggerWechatRichPost(row) },
+          { size: 'small', loading: wechatGenerating.value, onClick: () => triggerWechatRichPost(row) },
           { default: () => UI_TEXT.workshop.wechatRichPost }
         )
       ])

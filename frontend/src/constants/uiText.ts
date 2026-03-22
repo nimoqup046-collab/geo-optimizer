@@ -96,7 +96,7 @@ export const UI_TEXT = {
     approve: '审核通过',
     exportMd: '导出 MD',
     exportPdf: '导出 PDF',
-    wechatRichPost: '公众号一键图文（占位）',
+    wechatRichPost: '公众号一键图文',
     promptProfiles: '专家提示词档案',
     workflowSteps: 'Skill 子步骤编排',
     contentModelLabel: '内容生成模型',
