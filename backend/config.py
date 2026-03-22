@@ -60,6 +60,16 @@ class Settings(BaseSettings):
     FEATURE_CASE_CORPUS: bool = False
     FEATURE_ENTITY_AUTHORITY: bool = False
 
+    # Feature flags — V1.2 数据增强（默认开启）.
+    FEATURE_DATA_SOURCES: bool = True
+    FEATURE_RANKING_MONITOR: bool = True
+    FEATURE_COMPETITOR_ANALYSIS: bool = True
+
+    # Data provider config.
+    DATA_PROVIDER: str = "mock"  # mock | baidu_index | 5118
+    BAIDU_INDEX_API_KEY: Optional[str] = None
+    PROVIDER_5118_API_KEY: Optional[str] = None
+
     # Feature flags — V2 高级（默认关闭）.
     FEATURE_BRAND_CITATION: bool = False
     FEATURE_AGENT_TEAM: bool = False

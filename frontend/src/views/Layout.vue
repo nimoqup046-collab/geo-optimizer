@@ -62,9 +62,12 @@ import { computed, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AlbumsOutline,
+  AnalyticsOutline,
   ApertureOutline,
+  BarChartOutline,
   CalendarOutline,
   CubeOutline,
+  GitCompareOutline,
   NewspaperOutline,
   PeopleOutline,
   PulseOutline,
@@ -126,6 +129,9 @@ const allMenuOptions: MenuItem[] = [
     key: 'DistributionFeedback',
     icon: renderIcon(RocketOutline)
   },
+  { label: '数据源', key: 'DataSources', icon: renderIcon(BarChartOutline), featureFlag: 'FEATURE_DATA_SOURCES' },
+  { label: '效果追踪', key: 'RankingMonitor', icon: renderIcon(AnalyticsOutline), featureFlag: 'FEATURE_RANKING_MONITOR' },
+  { label: '竞品分析', key: 'CompetitorAnalysis', icon: renderIcon(GitCompareOutline), featureFlag: 'FEATURE_COMPETITOR_ANALYSIS' },
   { label: 'SEO 审计', key: 'SeoAudit', icon: renderIcon(SearchOutline), featureFlag: 'FEATURE_SEO_AUDIT' },
   { label: '内容日历', key: 'ContentCalendar', icon: renderIcon(CalendarOutline), featureFlag: 'FEATURE_CONTENT_CALENDAR' }
 ]

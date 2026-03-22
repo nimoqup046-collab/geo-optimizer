@@ -41,6 +41,7 @@ async def init_db():
     from models.report import AnalysisReport  # noqa: F401
     from models.source_asset import SourceAsset  # noqa: F401
     from models.workflow_step import WorkflowStep  # noqa: F401
+    from models.ranking import RankingSnapshot  # noqa: F401
     from models.workspace import Workspace  # noqa: F401
 
     async with engine.begin() as conn:

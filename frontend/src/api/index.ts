@@ -387,6 +387,34 @@ export type {
   CorrelationResponse
 } from './performance'
 
+export const dataSourceApi = {
+  providers: () => request.get<{ providers: any[] }>('/data-sources/providers'),
+  fetch: (payload: { keywords: string[]; provider?: string }) =>
+    request.post<{ metrics: any[]; count: number; source: string }>('/data-sources/fetch', payload),
+  enrich: (payload: { keywords: string[]; provider?: string }) =>
+    request.post<{ enriched: any[]; summary: any }>('/data-sources/enrich-analysis', payload),
+}
+
+export const rankingApi = {
+  check: (payload: { keywords: string[]; platform?: string; geo_score?: number }) =>
+    request.post<{ results: any[]; count: number }>('/ranking/check', payload),
+  trends: (params?: { keyword?: string }) =>
+    request.get<{ keyword: string; trends: any }>('/ranking/trends', { params }),
+  actions: (params: { keyword: string; rank_position?: number; geo_score?: number }) =>
+    request.get<{ actions: any[]; count: number }>('/ranking/actions', { params }),
+}
+
+export const competitorApi = {
+  analyze: (payload: { competitor_names: string[]; keywords: string[] }) =>
+    request.post<{ profiles: any[]; count: number }>('/competitors/analyze', payload),
+  gaps: (payload: { keywords: string[]; competitor_names: string[] }) =>
+    request.post<{ gaps: any[]; count: number; summary: any }>('/competitors/gaps', payload),
+  benchmarks: (params?: { competitor_names?: string }) =>
+    request.get<{ benchmarks: any[]; count: number }>('/competitors/benchmarks', { params }),
+  strategy: (payload: { brand_name: string; competitor_names: string[]; keywords: string[] }) =>
+    request.post<any>('/competitors/strategy', payload),
+}
+
 export const keywordApi = {
   getList: async (_params?: any) => [] as Keyword[],
   getDetail: async (_id: string) => ({} as Keyword),
