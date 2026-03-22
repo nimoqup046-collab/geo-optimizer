@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     # Feature flags — V2 高级（默认关闭）.
     FEATURE_BRAND_CITATION: bool = False
     FEATURE_AGENT_TEAM: bool = False
-    FEATURE_WORKFLOW_STEPS: bool = False
+    FEATURE_WORKFLOW_STEPS: bool = True
     FEATURE_WECHAT_RICH_POST: bool = True
 
     # Storage backend.

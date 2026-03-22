@@ -284,13 +284,26 @@ export const promptProfileApi = {
   update: (id: string, payload: any) => request.put<PromptProfile>(`/prompt-profiles/${id}`, payload)
 }
 
+export interface StepMetrics {
+  total: number
+  idle: number
+  running: number
+  completed: number
+  failed: number
+  avg_duration_ms: number
+  total_retries: number
+  adapters: Record<string, number>
+}
+
 export const workflowStepApi = {
   list: (params?: { brand_id?: string; step_type?: string }) =>
     request.get<WorkflowStep[]>('/workflow-steps', { params }),
   create: (payload: any) => request.post<WorkflowStep>('/workflow-steps', payload),
   update: (id: string, payload: any) => request.patch<WorkflowStep>(`/workflow-steps/${id}`, payload),
   run: (id: string, payload?: { payload?: Record<string, any> }) =>
-    request.post<WorkflowStep>(`/workflow-steps/${id}/run`, payload ?? {})
+    request.post<WorkflowStep>(`/workflow-steps/${id}/run`, payload ?? {}),
+  metrics: () => request.get<StepMetrics>('/workflow-steps/metrics'),
+  adapters: () => request.get<string[]>('/workflow-steps/adapters')
 }
 
 export const creativeApi = {
