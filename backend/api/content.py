@@ -1,5 +1,8 @@
 """
 内容生成相关API
+
+DEPRECATED: This module has been superseded by api/content_v2.py.
+It is no longer registered in main.py. Scheduled for removal in V2.0.
 """
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession

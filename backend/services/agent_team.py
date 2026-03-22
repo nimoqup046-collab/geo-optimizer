@@ -1,6 +1,10 @@
 """
 Expert Agent Team for GEO Optimizer.
 
+DEPRECATED: This module has been superseded by expert_team.py + geo_scorer.py.
+It is only loaded when FEATURE_AGENT_TEAM=True (default: False).
+Scheduled for removal in V2.0.
+
 Each agent represents a specialized expert role with its own system prompt and
 preferred model.  When OpenRouter is available and FEATURE_AGENT_TEAM is
 enabled, the analysis pipeline dispatches tasks to each agent in parallel and
