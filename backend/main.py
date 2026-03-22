@@ -23,6 +23,11 @@ from api.workflow_steps import router as workflow_steps_router
 from api.expert_team import router as expert_team_router
 from api.industries import router as industries_router
 from api.seo_audit import router as seo_audit_router
+from api.brand_citation import router as brand_citation_router
+from api.entity_authority import router as entity_authority_router
+from api.schema_gen import router as schema_gen_router
+from api.ai_crawl import router as ai_crawl_router
+from api.case_corpus import router as case_corpus_router
 from config import settings
 from database import engine, init_db
 from services.bootstrap import ensure_default_workspace
@@ -94,6 +99,11 @@ app.include_router(creative_router, prefix=settings.API_V1_PREFIX)
 app.include_router(expert_team_router, prefix=settings.API_V1_PREFIX)
 app.include_router(industries_router, prefix=settings.API_V1_PREFIX)
 app.include_router(seo_audit_router, prefix=settings.API_V1_PREFIX)
+app.include_router(brand_citation_router, prefix=settings.API_V1_PREFIX)
+app.include_router(entity_authority_router, prefix=settings.API_V1_PREFIX)
+app.include_router(schema_gen_router, prefix=settings.API_V1_PREFIX)
+app.include_router(ai_crawl_router, prefix=settings.API_V1_PREFIX)
+app.include_router(case_corpus_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health", tags=["system"])
