@@ -1,12 +1,12 @@
 """Workflow step CRUD + execution endpoints with real adapter dispatch."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Optional
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import resolve_workspace_id

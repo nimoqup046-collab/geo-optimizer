@@ -389,8 +389,8 @@ class SEOAuditor:
             "",
             f"**综合评分：{overall}/100（等级 {grade}）**",
             "",
-            f"| 维度 | 得分 |",
-            f"|------|------|",
+            "| 维度 | 得分 |",
+            "|------|------|",
             f"| 标题优化 | {report.scores.title_optimization}/100 |",
             f"| Meta Description | {report.scores.meta_description}/100 |",
             f"| 标题结构 | {report.scores.heading_structure}/100 |",
@@ -401,7 +401,7 @@ class SEOAuditor:
         ]
 
         if report.strengths:
-            lines.append(f"\n### 优势")
+            lines.append("\n### 优势")
             for s in report.strengths:
                 lines.append(f"- {s}")
 

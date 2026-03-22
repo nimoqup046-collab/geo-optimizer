@@ -9,7 +9,6 @@ Uses OpenRouter with Claude Sonnet 4.6 and Gemini 3.1 Pro.
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -17,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from config import settings
 from services.expert_prompts import build_expert_user_prompt, get_expert_system_prompt
-from services.geo_scorer import GEOScoreCard, compute_geo_score
+from services.geo_scorer import compute_geo_score
 from services.llm_service import LLMService
 
 

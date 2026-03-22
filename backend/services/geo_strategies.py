@@ -7,7 +7,7 @@ to improve AI search engine visibility.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from services.llm_service import LLMService
 from config import settings

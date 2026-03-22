@@ -52,7 +52,8 @@ EXPERT_SYSTEM_PROMPTS: Dict[str, str] = {
         "5. **CTA 嵌入**：在结论处自然引导行动\n"
         "6. **平台适配规则**：\n"
         "   - 公众号(wechat)：1200-2200字，专业权威语气，价值前置标题法，导语含可引用断言，每200-400字一个子标题，文末CTA引导进入私域\n"
-        "   - 小红书(xiaohongshu)：300-800字，「二极管标题法」（正/负极性标题引发好奇），闺蜜式口语，每100字2-4个emoji，3-5步干货+避坑提示，3-6个话题标签\n"
+        "   - 小红书(xiaohongshu)：300-800字，「二极管标题法」（正/负极性标题引发好奇），"
+        "闺蜜式口语，每100字2-4个emoji，3-5步干货+避坑提示，3-6个话题标签\n"
         "   - 知乎(zhihu)：800-1500字，结论先行+数据论证+可执行清单，理性专业，每300字至少1个数据引用，问答式标题\n"
         "   - 短视频(video)：60-90秒脚本，Hook(0-5s)+Pain(5-15s)+Solution(15-50s,3要点)+CTA(50-60s)，每段标注景别，每10秒一个信息点\n\n"
         "## 原则\n"
@@ -175,7 +176,7 @@ def get_expert_system_prompt(
     if context:
         brand = context.get("brand_name", "")
         industry = context.get("industry", "")
-        ctx_lines = [f"\n\n## 当前任务上下文"]
+        ctx_lines = ["\n\n## 当前任务上下文"]
         if brand:
             ctx_lines.append(f"- 品牌：{brand}")
         if industry:
