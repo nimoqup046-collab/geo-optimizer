@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from sqlalchemy import DateTime, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+
+_utcnow = lambda: datetime.now(timezone.utc)
 
 
 class PublishTask(Base):
@@ -36,7 +38,7 @@ class PublishTask(Base):
     publish_url: Mapped[str] = mapped_column(String(500), default="")
     result_payload: Mapped[dict] = mapped_column(JSON, default=dict)
     failure_reason: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=_utcnow, onupdate=_utcnow
     )

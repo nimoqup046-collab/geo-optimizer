@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from sqlalchemy import DateTime, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+
+_utcnow = lambda: datetime.now(timezone.utc)
 
 
 class AnalysisReport(Base):
@@ -32,7 +34,7 @@ class AnalysisReport(Base):
     html_path: Mapped[str] = mapped_column(String(500), default="")
     pdf_path: Mapped[str] = mapped_column(String(500), default="")
     pptx_path: Mapped[str] = mapped_column(String(500), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=_utcnow, onupdate=_utcnow
     )

@@ -1,10 +1,13 @@
 import json
+import logging
 import re
 from collections import Counter
 from typing import Any, Dict, List, Optional
 
 from config import settings
 from services.llm_service import generate_content
+
+logger = logging.getLogger(__name__)
 
 
 LONG_TAIL_HINTS = [
@@ -308,6 +311,7 @@ async def build_llm_summary(
             return _fallback_summary(payload)
         return text
     except Exception:
+        logger.exception("LLM summary generation failed, using fallback")
         return _fallback_summary(payload)
 
 

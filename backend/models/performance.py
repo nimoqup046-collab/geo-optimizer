@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+
+_utcnow = lambda: datetime.now(timezone.utc)
 
 
 class PerformanceSnapshot(Base):
@@ -36,9 +38,9 @@ class PerformanceSnapshot(Base):
     leads: Mapped[int] = mapped_column(Integer, default=0)
     keyword_index: Mapped[float] = mapped_column(Float, default=0.0)
     notes: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=_utcnow, onupdate=_utcnow
     )
 
 
@@ -59,4 +61,4 @@ class OptimizationInsight(Base):
     title: Mapped[str] = mapped_column(String(300), default="")
     details: Mapped[str] = mapped_column(Text, default="")
     action_items: Mapped[dict] = mapped_column(JSON, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

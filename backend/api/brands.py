@@ -132,8 +132,8 @@ async def update_brand(
     if not brand:
         raise HTTPException(status_code=404, detail="未找到品牌")
 
-    for field, value in request.model_dump(exclude_none=True).items():
-        setattr(brand, field, value)
+    for attr, value in request.model_dump(exclude_none=True).items():
+        setattr(brand, attr, value)
     await db.commit()
     await db.refresh(brand)
     return brand

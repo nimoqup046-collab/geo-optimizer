@@ -74,24 +74,30 @@ class PerformanceResponse(BaseModel):
 def _parse_csv_rows(csv_text: str) -> List[PerformanceEntry]:
     parsed: List[PerformanceEntry] = []
     reader = csv.DictReader(io.StringIO(csv_text))
-    for row in reader:
-        parsed.append(
-            PerformanceEntry(
-                publish_task_id=row.get("publish_task_id") or None,
-                content_variant_id=row.get("content_variant_id") or None,
-                keyword=row.get("keyword", ""),
-                platform=row.get("platform", ""),
-                impressions=int(row.get("impressions", 0) or 0),
-                reads=int(row.get("reads", 0) or 0),
-                likes=int(row.get("likes", 0) or 0),
-                favorites=int(row.get("favorites", 0) or 0),
-                comments=int(row.get("comments", 0) or 0),
-                shares=int(row.get("shares", 0) or 0),
-                leads=int(row.get("leads", 0) or 0),
-                keyword_index=float(row.get("keyword_index", 0) or 0),
-                notes=row.get("notes", ""),
+    for row_num, row in enumerate(reader, start=2):
+        try:
+            parsed.append(
+                PerformanceEntry(
+                    publish_task_id=row.get("publish_task_id") or None,
+                    content_variant_id=row.get("content_variant_id") or None,
+                    keyword=row.get("keyword", ""),
+                    platform=row.get("platform", ""),
+                    impressions=int(row.get("impressions", 0) or 0),
+                    reads=int(row.get("reads", 0) or 0),
+                    likes=int(row.get("likes", 0) or 0),
+                    favorites=int(row.get("favorites", 0) or 0),
+                    comments=int(row.get("comments", 0) or 0),
+                    shares=int(row.get("shares", 0) or 0),
+                    leads=int(row.get("leads", 0) or 0),
+                    keyword_index=float(row.get("keyword_index", 0) or 0),
+                    notes=row.get("notes", ""),
+                )
             )
-        )
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"CSV 第 {row_num} 行数据格式错误: {exc}",
+            )
     return parsed
 
 
