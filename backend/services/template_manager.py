@@ -1,4 +1,3 @@
-from typing import Dict, Any
 """Platform-specific content templates and generation rules.
 
 Each platform has two levels of configuration:
@@ -9,6 +8,7 @@ Each platform has two levels of configuration:
   example opening).
 """
 
+from typing import Any, Dict
 
 
 # ---------------------------------------------------------------------------
