@@ -169,6 +169,7 @@ export interface ReadinessResponse {
   status: 'ok' | 'degraded'
   timestamp: string
   checks: Record<string, ReadinessCheck>
+  feature_flags?: Record<string, boolean>
 }
 
 export interface DemoBootstrapResponse {
@@ -339,6 +340,14 @@ export type {
   StrategyResult,
   ExpertOutput
 } from './expertTeam'
+
+// Re-export performance insights API.
+export { performanceInsightsApi } from './performance'
+export type {
+  CorrelationItem,
+  InsightItem,
+  CorrelationResponse
+} from './performance'
 
 export const keywordApi = {
   getList: async (_params?: any) => [] as Keyword[],

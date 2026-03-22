@@ -5,7 +5,6 @@ from collections import Counter
 from typing import Any, Dict, List, Optional
 
 from config import settings
-from services.agent_team import assemble_team_report, compute_geo_score, run_agent_team
 from services.llm_service import generate_content
 
 logger = logging.getLogger(__name__)
@@ -96,14 +95,36 @@ def score_keyword(
     has_qa_structure: bool = False,
     has_entity: bool = False,
 ) -> float:
-    return compute_geo_score(
-        keyword=keyword,
-        intent=intent,
-        difficulty=difficulty,
-        covered=covered,
-        has_qa_structure=has_qa_structure,
-        has_entity=has_entity,
-    )
+    if settings.FEATURE_AGENT_TEAM:
+        from services.agent_team import compute_geo_score
+        return compute_geo_score(
+            keyword=keyword,
+            intent=intent,
+            difficulty=difficulty,
+            covered=covered,
+            has_qa_structure=has_qa_structure,
+            has_entity=has_entity,
+        )
+
+    # 本地评分逻辑（不依赖 agent_team）.
+    score = 50.0
+    if intent == "brand":
+        score += 15
+    elif intent == "long_tail":
+        score += 10
+    elif intent == "competitor":
+        score += 5
+    if difficulty == "low":
+        score += 10
+    elif difficulty == "high":
+        score -= 5
+    if has_qa_structure:
+        score += 15
+    if has_entity:
+        score += 5
+    if not covered:
+        score += 5
+    return min(max(score, 0), 100)
 
 
 def has_qa_structure(keyword: str) -> bool:
@@ -300,15 +321,37 @@ async def build_agent_team_summary(
 ) -> str:
     """
     Run the expert agent team and assemble a multi-section comprehensive report.
-    Falls back to a simple fallback string if OpenRouter is unavailable.
-    """
-    if not settings.OPENROUTER_API_KEY or not settings.FEATURE_AGENT_TEAM:
-        return _fallback_summary(payload)
 
-    try:
-        reports = await run_agent_team(payload, roles=roles)
-        assembled = assemble_team_report(reports)
-        return assembled if assembled.strip() else _fallback_summary(payload)
-    except Exception:
-        logger.exception("Agent team summary failed, using fallback")
-        return _fallback_summary(payload)
+    Priority order:
+    1. agent_team (V2, FEATURE_AGENT_TEAM=True) — legacy multi-agent pipeline
+    2. expert_team (MVP, FEATURE_EXPERT_TEAM=True) — 5-role expert pipeline
+    3. _fallback_summary — offline template
+    """
+    # 路径1：agent_team（V2，默认关闭）
+    if settings.OPENROUTER_API_KEY and settings.FEATURE_AGENT_TEAM:
+        try:
+            from services.agent_team import run_agent_team, assemble_team_report
+            reports = await run_agent_team(payload, roles=roles)
+            assembled = assemble_team_report(reports)
+            if assembled and assembled.strip():
+                return assembled
+        except Exception:
+            pass  # fall through to expert_team
+
+    # 路径2：expert_team（MVP 默认路径）
+    if settings.OPENROUTER_API_KEY and settings.FEATURE_EXPERT_TEAM:
+        try:
+            from services.expert_team import run_expert_pipeline
+            report = await run_expert_pipeline(
+                brand_data=payload.get("brand", {}),
+                keyword_layers=payload.get("keyword_layers", {}),
+                gap_analysis=payload.get("gap_analysis", {}),
+                recommendations=payload.get("recommendations", []),
+            )
+            md = report.to_markdown()
+            if md and md.strip():
+                return md
+        except Exception:
+            pass
+
+    return _fallback_summary(payload)

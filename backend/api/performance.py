@@ -12,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import resolve_workspace_id
 from database import get_db
 from models.brand import BrandProfile
+from models.content import ContentVariant
 from models.performance import PerformanceSnapshot
+from services.performance_tracker import (
+    compute_engagement_score,
+    correlate_geo_and_performance,
+    generate_insights,
+)
 
 
 router = APIRouter(prefix="/performance", tags=["performance"])
@@ -158,3 +164,96 @@ async def list_performance(
         query = query.where(PerformanceSnapshot.platform == platform)
     result = await db.execute(query.order_by(PerformanceSnapshot.created_at.desc()))
     return list(result.scalars().all())
+
+
+class CorrelationItem(BaseModel):
+    dimension: str
+    avg_score: float
+    avg_engagement: float
+    sample_count: int
+    insight: str
+
+
+class InsightItem(BaseModel):
+    title: str
+    description: str
+    action_items: List[str]
+    supporting_data: dict = {}
+
+
+class CorrelationResponse(BaseModel):
+    correlations: List[CorrelationItem]
+    insights: List[InsightItem]
+    total_records: int
+
+
+@router.get("/correlation", response_model=CorrelationResponse)
+async def get_performance_correlation(
+    workspace_id: Optional[str] = None,
+    brand_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Correlate GEO scores with engagement metrics across content."""
+    resolved_workspace_id = await resolve_workspace_id(db, workspace_id)
+    perf_query = select(PerformanceSnapshot).where(
+        PerformanceSnapshot.workspace_id == resolved_workspace_id
+    )
+    if brand_id:
+        perf_query = perf_query.where(PerformanceSnapshot.brand_id == brand_id)
+
+    perf_result = await db.execute(perf_query)
+    snapshots = list(perf_result.scalars().all())
+
+    # Build correlation records by joining with content variant GEO scores.
+    records = []
+    for snap in snapshots:
+        if not snap.content_variant_id:
+            continue
+        variant_result = await db.execute(
+            select(ContentVariant).where(ContentVariant.id == snap.content_variant_id)
+        )
+        variant = variant_result.scalar_one_or_none()
+        if not variant:
+            continue
+
+        geo_scores = (variant.generation_meta or {}).get("geo_scores")
+        if not geo_scores:
+            continue
+
+        records.append({
+            "geo_scores": geo_scores,
+            "metrics": {
+                "impressions": snap.impressions,
+                "reads": snap.reads,
+                "likes": snap.likes,
+                "favorites": snap.favorites,
+                "comments": snap.comments,
+                "shares": snap.shares,
+            },
+        })
+
+    correlations = correlate_geo_and_performance(records)
+    insights = generate_insights(correlations)
+
+    return CorrelationResponse(
+        correlations=[
+            CorrelationItem(
+                dimension=c.dimension,
+                avg_score=c.avg_score,
+                avg_engagement=c.avg_engagement,
+                sample_count=c.sample_count,
+                insight=c.insight,
+            )
+            for c in correlations
+        ],
+        insights=[
+            InsightItem(
+                title=i.title,
+                description=i.description,
+                action_items=i.action_items,
+                supporting_data=i.supporting_data,
+            )
+            for i in insights
+        ],
+        total_records=len(records),
+    )

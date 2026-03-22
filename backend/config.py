@@ -48,12 +48,23 @@ class Settings(BaseSettings):
     EXPERT_ANALYSIS_MODEL: str = "google/gemini-2.5-pro-preview"
     EXPERT_GEO_MODEL: str = "google/gemini-2.5-pro-preview"
 
-    # Feature flags.
-    FEATURE_WECHAT_RICH_POST: bool = False
+    # Feature flags — MVP 核心（默认开启）.
     FEATURE_EXPERT_TEAM: bool = True
     FEATURE_PROMPT_PROFILES: bool = True
-    FEATURE_WORKFLOW_STEPS: bool = True
-    FEATURE_AGENT_TEAM: bool = True
+
+    # Feature flags — V1.1 增强（默认关闭）.
+    FEATURE_SEO_AUDIT: bool = False
+    FEATURE_CONTENT_CALENDAR: bool = False
+    FEATURE_AI_CRAWL: bool = False
+    FEATURE_SCHEMA_GEN: bool = False
+    FEATURE_CASE_CORPUS: bool = False
+    FEATURE_ENTITY_AUTHORITY: bool = False
+
+    # Feature flags — V2 高级（默认关闭）.
+    FEATURE_BRAND_CITATION: bool = False
+    FEATURE_AGENT_TEAM: bool = False
+    FEATURE_WORKFLOW_STEPS: bool = False
+    FEATURE_WECHAT_RICH_POST: bool = False
 
     # Storage backend.
     STORAGE_BACKEND: str = "local"  # local | s3

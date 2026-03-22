@@ -144,6 +144,7 @@ const modeOptions = [
   { label: '标准生成', value: 'standard' },
   { label: '专家协作生成', value: 'expert' }
 ]
+
 const contentModelOptions = [
   { label: UI_TEXT.workshop.contentModelClaude, value: 'openrouter' },
   { label: UI_TEXT.workshop.contentModelGemini, value: 'openrouter_gemini' }
@@ -226,7 +227,8 @@ const generate = async () => {
       target_platforms: generateForm.target_platforms,
       count: generateForm.count,
       prompt_profile_id: generateForm.prompt_profile_id || undefined,
-      llm_provider: generateForm.llm_provider || undefined
+      llm_provider: generateForm.llm_provider || undefined,
+      mode: generateForm.mode
     })
     message.success('内容已生成')
     await load()
