@@ -72,6 +72,24 @@ const routes: RouteRecordRaw[] = [
         name: 'ContentCalendar',
         component: lazyView(() => import('@/views/ContentCalendar.vue')),
         meta: { title: '内容日历', featureFlag: 'FEATURE_CONTENT_CALENDAR' }
+      },
+      {
+        path: 'data-sources',
+        name: 'DataSources',
+        component: lazyView(() => import('@/views/DataSources.vue')),
+        meta: { title: '数据源', featureFlag: 'FEATURE_DATA_SOURCES' }
+      },
+      {
+        path: 'ranking-monitor',
+        name: 'RankingMonitor',
+        component: lazyView(() => import('@/views/RankingMonitor.vue')),
+        meta: { title: '效果追踪', featureFlag: 'FEATURE_RANKING_MONITOR' }
+      },
+      {
+        path: 'competitor-analysis',
+        name: 'CompetitorAnalysis',
+        component: lazyView(() => import('@/views/CompetitorAnalysis.vue')),
+        meta: { title: '竞品分析', featureFlag: 'FEATURE_COMPETITOR_ANALYSIS' }
       }
     ]
   }

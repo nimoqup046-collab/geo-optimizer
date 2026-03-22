@@ -125,6 +125,19 @@ if settings.FEATURE_WORKFLOW_STEPS:
     from api.workflow_steps import router as workflow_steps_router
     app.include_router(workflow_steps_router, prefix=settings.API_V1_PREFIX)
 
+# === V1.2 数据增强路由（Feature Flag 控制）===
+if settings.FEATURE_DATA_SOURCES:
+    from api.data_sources import router as data_sources_router
+    app.include_router(data_sources_router, prefix=settings.API_V1_PREFIX)
+
+if settings.FEATURE_RANKING_MONITOR:
+    from api.ranking import router as ranking_router
+    app.include_router(ranking_router, prefix=settings.API_V1_PREFIX)
+
+if settings.FEATURE_COMPETITOR_ANALYSIS:
+    from api.competitors import router as competitors_router
+    app.include_router(competitors_router, prefix=settings.API_V1_PREFIX)
+
 
 @app.get("/health", tags=["system"])
 async def health_check():

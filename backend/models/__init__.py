@@ -3,6 +3,7 @@ from .brand import BrandProfile
 from .content import ContentItem, ContentStatus, ContentVariant
 from .keyword_topic import KeywordIntent, KeywordTopic
 from .performance import OptimizationInsight, PerformanceSnapshot
+from .ranking import RankingSnapshot
 from .prompt_profile import PromptProfile
 from .publish_task import PublishTask
 from .report import AnalysisReport
@@ -26,4 +27,5 @@ __all__ = [
     "OptimizationInsight",
     "PromptProfile",
     "WorkflowStep",
+    "RankingSnapshot",
 ]

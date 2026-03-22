@@ -78,7 +78,14 @@ def classify_keyword(keyword: str, brand_name: str, competitors: List[str]) -> s
     return "industry"
 
 
-def estimate_difficulty(keyword: str) -> str:
+def estimate_difficulty(keyword: str, competition_score: Optional[float] = None) -> str:
+    # Use real competition data when available.
+    if competition_score is not None:
+        if competition_score >= 70:
+            return "high"
+        if competition_score >= 40:
+            return "medium"
+        return "low"
     size = len(keyword.strip())
     if size <= 4:
         return "high"
@@ -94,6 +101,8 @@ def score_keyword(
     covered: bool = False,
     has_qa_structure: bool = False,
     has_entity: bool = False,
+    search_volume: int = 0,
+    ai_citation_potential: float = 0.0,
 ) -> float:
     if settings.FEATURE_AGENT_TEAM:
         from services.agent_team import compute_geo_score
@@ -124,6 +133,15 @@ def score_keyword(
         score += 5
     if not covered:
         score += 5
+    # Data enrichment bonus (when real data is available).
+    if search_volume > 5000:
+        score += 5
+    elif search_volume > 1000:
+        score += 2
+    if ai_citation_potential > 70:
+        score += 8
+    elif ai_citation_potential > 40:
+        score += 3
     return min(max(score, 0), 100)
 
 
