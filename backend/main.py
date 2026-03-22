@@ -117,6 +117,10 @@ if settings.FEATURE_BRAND_CITATION:
     from api.brand_citation import router as brand_citation_router
     app.include_router(brand_citation_router, prefix=settings.API_V1_PREFIX)
 
+if settings.FEATURE_WECHAT_RICH_POST:
+    from api.creative import router as creative_router
+    app.include_router(creative_router, prefix=settings.API_V1_PREFIX)
+
 if settings.FEATURE_WORKFLOW_STEPS:
     from api.workflow_steps import router as workflow_steps_router
     app.include_router(workflow_steps_router, prefix=settings.API_V1_PREFIX)

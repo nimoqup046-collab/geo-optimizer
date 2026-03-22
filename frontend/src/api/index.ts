@@ -200,6 +200,21 @@ export interface WechatRichPostResponse {
   payload: Record<string, any>
 }
 
+export interface WechatArticleResponse {
+  task_id: string
+  status: string
+  title: string
+  summary: string
+  sections: Array<{ heading: string; body: string; image_directive: string }>
+  cover_image_directive: string
+  image_directives: Array<{ position: string; description: string }>
+  tags: string[]
+  cta: string
+  word_count: number
+  exports: Record<string, string>
+  generated_at: string
+}
+
 export const brandApi = {
   list: () => request.get<BrandProfile[]>('/brands'),
   get: (id: string) => request.get<BrandProfile>(`/brands/${id}`),
@@ -269,13 +284,26 @@ export const promptProfileApi = {
   update: (id: string, payload: any) => request.put<PromptProfile>(`/prompt-profiles/${id}`, payload)
 }
 
+export interface StepMetrics {
+  total: number
+  idle: number
+  running: number
+  completed: number
+  failed: number
+  avg_duration_ms: number
+  total_retries: number
+  adapters: Record<string, number>
+}
+
 export const workflowStepApi = {
   list: (params?: { brand_id?: string; step_type?: string }) =>
     request.get<WorkflowStep[]>('/workflow-steps', { params }),
   create: (payload: any) => request.post<WorkflowStep>('/workflow-steps', payload),
   update: (id: string, payload: any) => request.patch<WorkflowStep>(`/workflow-steps/${id}`, payload),
   run: (id: string, payload?: { payload?: Record<string, any> }) =>
-    request.post<WorkflowStep>(`/workflow-steps/${id}/run`, payload ?? {})
+    request.post<WorkflowStep>(`/workflow-steps/${id}/run`, payload ?? {}),
+  metrics: () => request.get<StepMetrics>('/workflow-steps/metrics'),
+  adapters: () => request.get<string[]>('/workflow-steps/adapters')
 }
 
 export const creativeApi = {
@@ -284,7 +312,17 @@ export const creativeApi = {
     variant_id?: string
     title_hint?: string
     style_hint?: string
-  }) => request.post<WechatRichPostResponse>('/creative/wechat-rich-post', payload)
+  }) => request.post<WechatRichPostResponse>('/creative/wechat-rich-post', payload),
+  generateFromTopic: (payload: {
+    topic: string
+    brand_name?: string
+    tone_of_voice?: string
+    call_to_action?: string
+    banned_words?: string
+    industry?: string
+    style_hint?: string
+    export_formats?: string[]
+  }) => request.post<WechatArticleResponse>('/creative/wechat-generate', payload)
 }
 
 export const systemApi = {

@@ -75,6 +75,7 @@ async def readiness_check():
         "FEATURE_BRAND_CITATION": settings.FEATURE_BRAND_CITATION,
         "FEATURE_WORKFLOW_STEPS": settings.FEATURE_WORKFLOW_STEPS,
         "FEATURE_AGENT_TEAM": settings.FEATURE_AGENT_TEAM,
+        "FEATURE_WECHAT_RICH_POST": settings.FEATURE_WECHAT_RICH_POST,
     }
 
     return {

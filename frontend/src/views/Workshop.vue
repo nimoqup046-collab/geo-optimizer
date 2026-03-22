@@ -86,15 +86,31 @@
     </n-card>
 
     <n-card :title="UI_TEXT.workshop.workflowSteps" :bordered="false">
+      <template v-if="stepMetrics">
+        <n-space :size="24" style="margin-bottom: 16px;">
+          <n-statistic label="总步骤" :value="stepMetrics.total" />
+          <n-statistic label="已完成" :value="stepMetrics.completed" />
+          <n-statistic label="失败" :value="stepMetrics.failed" />
+          <n-statistic label="平均耗时" :value="`${Math.round(stepMetrics.avg_duration_ms)}ms`" />
+          <n-statistic label="总重试" :value="stepMetrics.total_retries" />
+        </n-space>
+      </template>
       <n-form inline :model="workflowForm">
         <n-form-item label="名称">
-          <n-input v-model:value="workflowForm.name" style="width: 220px" />
+          <n-input v-model:value="workflowForm.name" style="width: 200px" />
         </n-form-item>
         <n-form-item label="类型">
           <n-input v-model:value="workflowForm.step_type" style="width: 120px" />
         </n-form-item>
         <n-form-item label="适配器">
-          <n-input v-model:value="workflowForm.adapter" style="width: 120px" />
+          <n-select
+            v-model:value="workflowForm.adapter"
+            :options="adapterOptions"
+            style="width: 180px"
+          />
+        </n-form-item>
+        <n-form-item label="最大重试">
+          <n-input-number v-model:value="workflowForm.retry_limit" :min="0" :max="10" style="width: 100px" />
         </n-form-item>
         <n-form-item>
           <n-button @click="createWorkflowStep">创建步骤</n-button>
@@ -102,6 +118,22 @@
       </n-form>
       <n-data-table :columns="workflowColumns" :data="workflowSteps" style="margin-top: 8px" />
     </n-card>
+
+    <n-modal v-model:show="showWechatPreview" preset="card" title="公众号图文预览" style="width: 760px; max-height: 90vh;">
+      <n-space vertical :size="12">
+        <n-space>
+          <n-button type="primary" size="small" @click="downloadWechatHtml">下载 HTML</n-button>
+          <n-button size="small" @click="showWechatPreview = false">关闭</n-button>
+        </n-space>
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: auto; max-height: 70vh;">
+          <iframe
+            v-if="wechatPreviewHtml"
+            :srcdoc="wechatPreviewHtml"
+            style="width: 100%; height: 600px; border: none;"
+          />
+        </div>
+      </n-space>
+    </n-modal>
   </n-space>
 </template>
 
@@ -118,6 +150,7 @@ import {
   type AnalysisReport,
   type ContentItem,
   type PromptProfile,
+  type StepMetrics,
   type WorkflowStep
 } from '@/api'
 import { UI_TEXT } from '@/constants/uiText'
@@ -130,8 +163,13 @@ const reports = ref<AnalysisReport[]>([])
 const items = ref<ContentItem[]>([])
 const promptProfiles = ref<PromptProfile[]>([])
 const workflowSteps = ref<WorkflowStep[]>([])
+const availableAdapters = ref<string[]>([])
+const stepMetrics = ref<StepMetrics | null>(null)
 
-const featureWechatRichPost = String(import.meta.env.VITE_FEATURE_WECHAT_RICH_POST ?? '0') === '1'
+const featureWechatRichPost = true
+const wechatGenerating = ref(false)
+const wechatPreviewHtml = ref('')
+const showWechatPreview = ref(false)
 
 const platformOptions = [
   { label: '公众号', value: 'wechat' },
@@ -167,10 +205,15 @@ const promptProfileForm = reactive({
 })
 
 const workflowForm = reactive({
-  name: '内容优化-mock步骤',
+  name: '内容优化步骤',
   step_type: 'skill_step',
-  adapter: 'mock'
+  adapter: 'mock',
+  retry_limit: 2
 })
+
+const adapterOptions = computed(() =>
+  availableAdapters.value.map((a) => ({ label: a, value: a }))
+)
 
 const reportOptions = computed(() =>
   reports.value.map((report) => ({ label: report.title, value: report.report_id }))
@@ -193,16 +236,20 @@ const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [reportList, contentList, profileList, workflowList] = await Promise.all([
+    const [reportList, contentList, profileList, workflowList, adapterList, metricsData] = await Promise.all([
       analysisApi.listReports(),
       contentApi.list(),
       promptProfileApi.list(),
-      workflowStepApi.list()
+      workflowStepApi.list(),
+      workflowStepApi.adapters().catch(() => [] as string[]),
+      workflowStepApi.metrics().catch(() => null)
     ])
     reports.value = reportList
     items.value = contentList
     promptProfiles.value = profileList
     workflowSteps.value = workflowList
+    availableAdapters.value = adapterList.length > 0 ? adapterList : ['mock']
+    stepMetrics.value = metricsData
 
     if (!generateForm.report_id && reports.value.length > 0) {
       generateForm.report_id = reports.value[0].report_id
@@ -251,10 +298,7 @@ const exportItem = async (row: ContentItem, format: 'md' | 'pdf') => {
 }
 
 const triggerWechatRichPost = async (row: ContentItem) => {
-  if (!featureWechatRichPost) {
-    message.warning('当前环境未开启公众号图文功能。')
-    return
-  }
+  wechatGenerating.value = true
   try {
     const wechatVariant = row.variants.find((item) => item.platform === 'wechat')
     const result = await creativeApi.createWechatRichPost({
@@ -262,9 +306,22 @@ const triggerWechatRichPost = async (row: ContentItem) => {
       variant_id: wechatVariant?.id
     })
     message.success(result.message)
+    // Show HTML preview if available
+    if (result.payload?.html) {
+      wechatPreviewHtml.value = result.payload.html
+      showWechatPreview.value = true
+    }
   } catch (error: any) {
-    message.error(`触发失败：${error?.message || UI_TEXT.common.unknownError}`)
+    message.error(`图文生成失败：${error?.message || UI_TEXT.common.unknownError}`)
+  } finally {
+    wechatGenerating.value = false
   }
+}
+
+const downloadWechatHtml = () => {
+  if (!wechatPreviewHtml.value) return
+  const blob = new Blob([wechatPreviewHtml.value], { type: 'text/html;charset=utf-8' })
+  downloadBlob(blob, `wechat_article_${Date.now()}.html`)
 }
 
 const createPromptProfile = async () => {
@@ -290,16 +347,13 @@ const createPromptProfile = async () => {
 const createWorkflowStep = async () => {
   try {
     await workflowStepApi.create({
-      ...workflowForm,
+      name: workflowForm.name,
+      step_type: workflowForm.step_type,
+      adapter: workflowForm.adapter,
       status: 'idle',
-      retry_limit: 2,
-      input_payload: {
-        objective: '优化现有内容',
-        provider: 'mock'
-      },
-      config: {
-        note: '下一轮替换为真实 skill 适配器'
-      }
+      retry_limit: workflowForm.retry_limit,
+      input_payload: {},
+      config: {}
     })
     message.success('编排步骤已创建')
     await load()
@@ -310,13 +364,19 @@ const createWorkflowStep = async () => {
 
 const runWorkflowStep = async (row: WorkflowStep) => {
   try {
-    await workflowStepApi.run(row.id, {
+    const result = await workflowStepApi.run(row.id, {
       payload: {
         trigger: 'manual',
         at: new Date().toISOString()
       }
     })
-    message.success('编排步骤已执行（mock）')
+    const meta = result.output_payload?._meta
+    const duration = meta?.duration_ms ? ` (${Math.round(meta.duration_ms)}ms)` : ''
+    if (result.status === 'completed') {
+      message.success(`步骤执行成功${duration}`)
+    } else {
+      message.warning(`步骤执行失败: ${meta?.error || '未知错误'}`)
+    }
     await load()
   } catch (error: any) {
     message.error(`执行失败：${error?.message || UI_TEXT.common.unknownError}`)
@@ -359,7 +419,7 @@ const columns = [
         ),
         h(
           NButton,
-          { size: 'small', disabled: !featureWechatRichPost, onClick: () => triggerWechatRichPost(row) },
+          { size: 'small', loading: wechatGenerating.value, onClick: () => triggerWechatRichPost(row) },
           { default: () => UI_TEXT.workshop.wechatRichPost }
         )
       ])
@@ -380,7 +440,6 @@ const promptProfileColumns = [
 
 const workflowColumns = [
   { title: '名称', key: 'name' },
-  { title: '类型', key: 'step_type' },
   { title: '适配器', key: 'adapter' },
   { title: '状态', key: 'status' },
   {
@@ -389,13 +448,25 @@ const workflowColumns = [
     render: (row: WorkflowStep) => `${row.retry_count}/${row.retry_limit}`
   },
   {
+    title: '耗时',
+    key: 'duration',
+    render: (row: WorkflowStep) => {
+      const meta = row.output_payload?._meta
+      return meta?.duration_ms ? `${Math.round(meta.duration_ms)}ms` : '-'
+    }
+  },
+  {
     title: '操作',
     key: 'actions',
     render: (row: WorkflowStep) =>
       h(
         NButton,
-        { size: 'small', onClick: () => runWorkflowStep(row) },
-        { default: () => '执行 Mock' }
+        {
+          size: 'small',
+          type: row.status === 'failed' ? 'warning' : 'default',
+          onClick: () => runWorkflowStep(row),
+        },
+        { default: () => '执行' }
       )
   }
 ]
