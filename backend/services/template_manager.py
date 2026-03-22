@@ -322,7 +322,7 @@ def format_generation_prompt(
     tone = rule.get("tone", rule.get("style", ""))
 
     prompt = (
-        f"请围绕主题"{topic}"生成一篇{rule['name']}。\n"
+        f"请围绕主题「{topic}」生成一篇{rule['name']}。\n"
         f"目标长度：{rule['length']}\n"
         f"风格要求：{rule['style']}\n"
         f"语气风格：{tone}\n"
@@ -358,40 +358,5 @@ def format_generation_prompt(
             if hooks:
                 prompt += f"推荐切入角度：{', '.join(hooks)}\n"
             prompt += "\n"
-
-    prompt += (
-    industry: Optional[str] = None,
-) -> str:
-    rule = get_platform_rule(platform)
-    style = get_platform_style(platform)
-
-    industry_hint = ""
-    if industry:
-        # Lazy import to avoid circular dependency.
-        from services.industry_config import get_industry_config
-
-        cfg = get_industry_config(industry)
-        if cfg:
-            industry_hint = (
-                f"行业：{cfg['display_name']}\n"
-                f"行业调性：{cfg['default_tone']}\n"
-                f"行业禁用项：{'、'.join(cfg['banned_words'][:5])}\n"
-            )
-
-    return (
-        f"请围绕主题“{topic}”生成一篇{rule['name']}。\n"
-        f"目标长度：{rule['length']}\n"
-        f"风格要求：{rule['style']}\n"
-        f"语气调性：{style['tone']}\n"
-        f"内容结构：{style['structure']}\n"
-        f"品牌：{brand_name}\n"
-        f"语气：{tone_of_voice or '专业、温和、可执行'}\n"
-        f"CTA：{call_to_action or '引导用户提交具体场景进行咨询'}\n"
-        f"禁用项：{banned_words or '夸大承诺、道德审判、绝对化表述'}\n"
-        f"{industry_hint}\n"
-        "输出格式：\n"
-        "# 标题\n"
-        "正文内容...\n"
-    )
 
     return prompt
