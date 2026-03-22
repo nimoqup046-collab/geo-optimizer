@@ -1,0 +1,10 @@
+line-length = 140
+
+[lint]
+select = ["E", "F", "W"]
+
+[lint.per-file-ignores]
+# Test files need sys.path manipulation before imports
+"tests/*.py" = ["E402"]
+# Model files use lambda for SQLAlchemy column defaults — idiomatic pattern
+"models/*.py" = ["E731"]

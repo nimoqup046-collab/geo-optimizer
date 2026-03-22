@@ -15,7 +15,6 @@ from models.brand import BrandProfile
 from models.content import ContentVariant
 from models.performance import PerformanceSnapshot
 from services.performance_tracker import (
-    compute_engagement_score,
     correlate_geo_and_performance,
     generate_insights,
 )

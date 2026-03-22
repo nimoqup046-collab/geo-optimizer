@@ -289,12 +289,12 @@ class KeywordResearcher:
         ]
 
         if high_heat:
-            lines.append(f"\n### 高热度关键词 TOP 3")
+            lines.append("\n### 高热度关键词 TOP 3")
             for k in high_heat[:3]:
                 lines.append(f"- {k.keyword}（热度 {k.heat_level}/5，{k.search_intent}）")
 
         if high_ai:
-            lines.append(f"\n### 高 AI 引用潜力 TOP 3")
+            lines.append("\n### 高 AI 引用潜力 TOP 3")
             for k in high_ai[:3]:
                 lines.append(f"- {k.keyword}（建议格式：{k.suggested_format}）")
 

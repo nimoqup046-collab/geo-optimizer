@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from services.schema_generator import SchemaGenerator
 

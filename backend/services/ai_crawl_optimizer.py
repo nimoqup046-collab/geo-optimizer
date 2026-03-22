@@ -123,7 +123,7 @@ class AICrawlOptimizer:
         lines = content.strip().split("\n")
 
         # 检查是否有标题结构
-        headings = [l for l in lines if l.strip().startswith("#")]
+        headings = [line for line in lines if line.strip().startswith("#")]
         if len(headings) < 2:
             issues.append(CrawlIssue(
                 category="structure",
@@ -135,8 +135,8 @@ class AICrawlOptimizer:
 
         # 检查段落长度
         long_paragraphs = [
-            l for l in lines
-            if len(l.strip()) > 300 and not l.strip().startswith("#")
+            line for line in lines
+            if len(line.strip()) > 300 and not line.strip().startswith("#")
         ]
         if long_paragraphs:
             issues.append(CrawlIssue(
@@ -149,8 +149,8 @@ class AICrawlOptimizer:
         # 检查是否有 Q&A 结构
         qa_patterns = ["?", "？", "Q:", "问:", "答:"]
         has_qa = any(
-            any(p in l for p in qa_patterns)
-            for l in lines
+            any(p in line for p in qa_patterns)
+            for line in lines
         )
         if not has_qa:
             issues.append(CrawlIssue(
@@ -191,7 +191,7 @@ class AICrawlOptimizer:
         # 检查是否有列表/步骤
         list_patterns = [r'^\d+[\.\、]', r'^[-*•]', r'^第[一二三四五六七八九十]']
         has_list = any(
-            re.search(p, l.strip()) for l in lines for p in list_patterns
+            re.search(p, line.strip()) for line in lines for p in list_patterns
         )
         if not has_list:
             issues.append(CrawlIssue(

@@ -12,13 +12,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from services.llm_service import LLMService, generate_content
+from services.llm_service import generate_content
 from services.template_manager import (
-    PLATFORM_RULES,
     format_generation_prompt,
-    get_industry_overlay,
-    get_platform_rule,
-    get_platform_title_guidance,
 )
 
 logger = logging.getLogger(__name__)

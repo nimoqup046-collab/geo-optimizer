@@ -15,7 +15,7 @@ import json
 
 from database import get_db
 from models.keyword import Keyword
-from models.content import GeneratedContent, Platform, ContentStatus
+from models.content import GeneratedContent, ContentStatus
 from services.llm_service import generate_content
 from services.template_manager import format_generation_prompt, get_template_manager
 from config import settings
@@ -107,7 +107,7 @@ async def generate_content_endpoint(
         raise HTTPException(status_code=404, detail="关键词不存在")
 
     # 获取模板管理器
-    template_mgr = get_template_manager()
+    _ = get_template_manager()
 
     generated_contents = []
 
@@ -459,7 +459,8 @@ def _export_html(contents: List[GeneratedContent]) -> dict:
 """
 
         if content.tags:
-            tags_html = " ".join([f'<span style="background:#f0f0f0;padding:4px 8px;border-radius:4px;font-size:12px;margin-right:4px;">{tag}</span>' for tag in content.tags])
+            tag_style = "background:#f0f0f0;padding:4px 8px;border-radius:4px;font-size:12px;margin-right:4px;"
+            tags_html = " ".join([f'<span style="{tag_style}">{tag}</span>' for tag in content.tags])
             html_content += f'        <div class="tags">{tags_html}</div>\n'
 
         html_content += f"""

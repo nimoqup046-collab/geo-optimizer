@@ -3,7 +3,7 @@
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -11,7 +11,7 @@ import uuid
 
 from database import get_db
 from models.keyword import Keyword, KeywordCategory
-from services.llm_service import generate_content, build_system_prompt
+from services.llm_service import generate_content
 from services.keyword_researcher import KeywordResearcher
 from services.topic_cluster import TopicClusterEngine
 from services.content_calendar import ContentCalendarGenerator

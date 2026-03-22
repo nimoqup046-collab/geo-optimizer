@@ -31,13 +31,12 @@ from services.analysis_engine import (
     score_keyword,
 )
 from services.expert_team import (
-    ExpertRole,
     get_team_config,
     run_expert_pipeline,
     run_single_expert,
 )
 from services.geo_scorer import compute_geo_score
-from services.geo_strategies import AVAILABLE_STRATEGIES, apply_multiple_strategies, apply_strategy
+from services.geo_strategies import AVAILABLE_STRATEGIES, apply_multiple_strategies
 
 
 router = APIRouter(prefix="/expert-team", tags=["expert-team"])

@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any
 """Platform-specific content templates and generation rules.
 
 Each platform has two levels of configuration:
@@ -9,7 +9,6 @@ Each platform has two levels of configuration:
   example opening).
 """
 
-from typing import Any, Dict, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -292,8 +291,13 @@ def get_platform_title_guidance(platform: str, topic: str) -> str:
     ) or title_rules.get("hook_templates", [])
     if templates:
         guidance += "标题示例：\n"
+        fmt_kwargs = dict(
+            topic=topic, core_insight='核心洞察', number=3, deliverable='模板',
+            audience='从业者', year='2026', action='做好', perspective='实战',
+            experience='深入研究', phenomenon='这种情况', wrong_approach='这样做', wrong_thing='这件事',
+        )
         for t in templates[:2]:
-            guidance += f"  - {t.format(topic=topic, core_insight='核心洞察', number=3, deliverable='模板', audience='从业者', year='2026', action='做好', perspective='实战', experience='深入研究', phenomenon='这种情况', wrong_approach='这样做', wrong_thing='这件事')}\n"
+            guidance += f"  - {t.format(**fmt_kwargs)}\n"
 
     return guidance
 
