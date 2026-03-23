@@ -464,7 +464,7 @@ def compute_geo_score(
         ),
     }
 
-    return GEOScoreCard(
+    scorecard = GEOScoreCard(
         claim_density=claim,
         citability=cite,
         extractability=extract,
@@ -478,3 +478,60 @@ def compute_geo_score(
         overall=overall,
         details=details,
     )
+
+    # Inject strategy suggestions based on weak dimensions.
+    strategies = suggest_optimization_strategies(scorecard)
+    if strategies:
+        details["suggested_strategies"] = ", ".join(strategies)
+    weak_dims = [
+        dim for dim in _GEO_DIMENSIONS
+        if getattr(scorecard, dim) < 65.0
+    ]
+    if weak_dims:
+        details["weakest_dimensions"] = ", ".join(weak_dims)
+
+    return scorecard
+
+
+# ---------------------------------------------------------------------------
+# Dimension → optimization strategy mapping (for feedback loop)
+# ---------------------------------------------------------------------------
+
+_GEO_DIMENSIONS = [
+    "authority_citation", "structured_data", "keyword_coverage",
+    "credibility_signals", "platform_fitness", "freshness",
+]
+
+DIMENSION_STRATEGY_MAP: Dict[str, List[str]] = {
+    "authority_citation": ["citation_enhancement"],
+    "structured_data": ["qa_structuring"],
+    "keyword_coverage": ["topic_cluster_alignment", "entity_enrichment"],
+    "credibility_signals": ["statistics_addition", "citation_enhancement"],
+    "platform_fitness": [],  # requires regeneration, not patch optimization
+    "freshness": ["statistics_addition"],
+}
+
+
+def suggest_optimization_strategies(
+    scorecard: GEOScoreCard,
+    threshold: float = 65.0,
+) -> List[str]:
+    """Suggest optimization strategies based on the weakest scoring dimensions.
+
+    Returns an ordered, deduplicated list of strategy names targeting the
+    3 weakest dimensions below *threshold*.
+    """
+    weak_dimensions = []
+    for dim in _GEO_DIMENSIONS:
+        score = getattr(scorecard, dim)
+        if score < threshold:
+            weak_dimensions.append((dim, score))
+
+    weak_dimensions.sort(key=lambda x: x[1])  # weakest first
+
+    strategies: List[str] = []
+    for dim, _ in weak_dimensions[:3]:
+        strategies.extend(DIMENSION_STRATEGY_MAP.get(dim, []))
+
+    # Deduplicate while preserving order.
+    return list(dict.fromkeys(strategies))
