@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -73,6 +72,45 @@ def _run_for_output(file_path: str, args: list[str], timeout: int = 20) -> Comma
     return run_command(file_path, args, timeout=timeout, check=False)
 
 
+def _read_python_version_candidates(project_root: Path | None) -> list[str]:
+    version_candidates: list[str] = []
+    version_files: list[Path] = []
+    if project_root:
+        version_files.extend(
+            [
+                project_root / "backend" / ".python-version",
+                project_root / ".python-version",
+            ]
+        )
+
+    for version_file in version_files:
+        if not version_file.exists():
+            continue
+        raw = version_file.read_text(encoding="utf-8").strip()
+        if not raw:
+            continue
+        version = raw.splitlines()[0].strip()
+        if not version:
+            continue
+        version_candidates.append(version)
+        major = version.split(".", 1)[0]
+        if major and major != version:
+            version_candidates.append(major)
+        break
+
+    version_candidates.extend(["3.12", "3", "3.13"])
+
+    unique: list[str] = []
+    seen: set[str] = set()
+    for item in version_candidates:
+        normalized = item.strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        unique.append(normalized)
+    return unique
+
+
 def resolve_python_exe(project_root: Path | None = None) -> str:
     ensure_runtime_env()
     if project_root:
@@ -82,14 +120,22 @@ def resolve_python_exe(project_root: Path | None = None) -> str:
 
     py_launcher = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "py.exe"
     if py_launcher.exists():
-        result = _run_for_output(str(py_launcher), ["-3.13", "-c", "import sys; print(sys.executable)"])
-        path = (result.stdout or "").strip()
-        if result.exit_code == 0 and path and Path(path).exists():
-            return path
+        for selector in _read_python_version_candidates(project_root):
+            result = _run_for_output(
+                str(py_launcher),
+                [f"-{selector}", "-c", "import sys; print(sys.executable)"],
+            )
+            path = (result.stdout or "").strip()
+            if result.exit_code == 0 and path and Path(path).exists():
+                return path
 
-    py313 = Path(r"C:\Python313\python.exe")
-    if py313.exists():
-        return str(py313)
+    local_python_candidates = [
+        Path(r"C:\Python312\python.exe"),
+        Path(r"C:\Python313\python.exe"),
+    ]
+    for local_python in local_python_candidates:
+        if local_python.exists():
+            return str(local_python)
 
     from_path = _find_in_path("python.exe")
     if from_path:

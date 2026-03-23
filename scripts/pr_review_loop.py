@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,12 +25,6 @@ RISK_PATTERNS: dict[str, str] = {
     "api_surface_change": "backend/api/",
     "frontend_core_change": "frontend/src/",
 }
-
-
-@dataclass
-class StepResult:
-    ok: bool
-    detail: str
 
 
 def parse_args() -> argparse.Namespace:

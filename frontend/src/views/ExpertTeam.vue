@@ -263,7 +263,7 @@ function getScoreType(score: number): 'success' | 'warning' | 'error' {
 
 function renderMarkdown(text: string): string {
   if (!text) return ''
-  return sanitizeHtml(text
+  return sanitizeHtml(escapeHtml(text)
     .replace(/^### (.+)$/gm, '<h4>$1</h4>')
     .replace(/^## (.+)$/gm, '<h3>$1</h3>')
     .replace(/^# (.+)$/gm, '<h2>$1</h2>')
@@ -273,34 +273,79 @@ function renderMarkdown(text: string): string {
     .replace(/\n/g, '<br/>'))
 }
 
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function sanitizeHtml(input: string): string {
   const parser = new DOMParser()
   const doc = parser.parseFromString(input, 'text/html')
-  const blocked = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta'])
+  const blocked = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'svg', 'math'])
+  const allowedTag = new Set(['h2', 'h3', 'h4', 'strong', 'em', 'li', 'br', 'p', 'ul', 'ol', 'a', 'code', 'pre', 'blockquote'])
+  const allowedAttrsByTag: Record<string, Set<string>> = {
+    a: new Set(['href', 'title', 'target', 'rel'])
+  }
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT)
-  const toRemove: Element[] = []
-  const allowedTag = new Set(['h2', 'h3', 'h4', 'strong', 'li', 'br', 'p', 'ul', 'ol', 'a', 'span', 'div'])
+  const toUnwrap: Element[] = []
+  const toDrop: Element[] = []
+
+  const safeHref = (href: string) => {
+    const normalized = href.trim().toLowerCase()
+    return (
+      normalized.startsWith('http://') ||
+      normalized.startsWith('https://') ||
+      normalized.startsWith('mailto:') ||
+      normalized.startsWith('#')
+    )
+  }
+
   while (walker.nextNode()) {
     const el = walker.currentNode as Element
     const tag = el.tagName.toLowerCase()
-    if (blocked.has(tag) || !allowedTag.has(tag)) {
-      toRemove.push(el)
+    if (blocked.has(tag)) {
+      toDrop.push(el)
       continue
     }
-    const attrs = Array.from(el.attributes)
-    for (const attr of attrs) {
+    if (!allowedTag.has(tag)) {
+      toUnwrap.push(el)
+      continue
+    }
+    for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase()
-      const value = attr.value.trim().toLowerCase()
-      if (name.startsWith('on')) {
+      const value = attr.value.trim()
+      if (name.startsWith('on') || name === 'style') {
         el.removeAttribute(attr.name)
         continue
       }
-      if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) {
+      const allowedAttrs = allowedAttrsByTag[tag] || new Set<string>()
+      if (!allowedAttrs.has(name)) {
         el.removeAttribute(attr.name)
+        continue
+      }
+      if (tag === 'a' && name === 'href' && !safeHref(value)) {
+        el.removeAttribute('href')
+      }
+    }
+    if (tag === 'a') {
+      if (!el.getAttribute('href')) {
+        el.removeAttribute('target')
+        el.removeAttribute('rel')
+      } else {
+        el.setAttribute('target', '_blank')
+        el.setAttribute('rel', 'noopener noreferrer nofollow')
       }
     }
   }
-  for (const el of toRemove) {
+
+  for (const el of toDrop) {
+    el.remove()
+  }
+  for (const el of toUnwrap) {
     el.replaceWith(...Array.from(el.childNodes))
   }
   return doc.body.innerHTML
