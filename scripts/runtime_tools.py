@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -58,14 +59,8 @@ def ensure_runtime_env() -> dict[str, str]:
 
 
 def _find_in_path(file_name: str) -> str | None:
-    for entry in os.environ.get("PATH", "").split(";"):
-        entry = entry.strip()
-        if not entry:
-            continue
-        candidate = Path(entry) / file_name
-        if candidate.exists():
-            return str(candidate)
-    return None
+    resolved = shutil.which(file_name)
+    return str(Path(resolved)) if resolved else None
 
 
 def _run_for_output(file_path: str, args: list[str], timeout: int = 20) -> CommandResult:
@@ -183,8 +178,8 @@ def resolve_git_exe() -> str:
 def _render(file_path: str, args: list[str]) -> str:
     chunks = [file_path]
     for arg in args:
-        if any(ch.isspace() for ch in arg) or '"' in arg:
-            chunks.append(f'"{arg.replace("\"", "\\\"")}"')
+        if any(ch.isspace() for ch in arg) or '"' in arg or "&" in arg:
+            chunks.append(f'"{arg.replace(chr(34), "\\\"")}"')
         else:
             chunks.append(arg)
     return " ".join(chunks)
@@ -206,7 +201,8 @@ def run_command(
 
     if ext in {".cmd", ".bat"}:
         comspec = os.environ.get("ComSpec", RUNTIME_DEFAULTS["ComSpec"])
-        cmd_line = _render(file_path, args)
+        # Use Python's Windows command-line quoting to avoid fragile manual escapes.
+        cmd_line = subprocess.list2cmdline([file_path, *args])
         command = [comspec, "/d", "/c", cmd_line]
         command_text = _render(comspec, ["/d", "/c", cmd_line])
 
