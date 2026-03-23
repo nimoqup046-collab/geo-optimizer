@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -104,45 +104,45 @@ def main() -> int:
             {
                 "name": brand_name,
                 "industry": "emotion_consulting",
-                "tone_of_voice": "专业、温和、可执行",
-                "service_description": "冒烟测试品牌",
-                "target_audience": "测试受众",
-                "call_to_action": "测试 CTA",
+                "tone_of_voice": "professional, warm, actionable",
+                "service_description": "smoke test brand",
+                "target_audience": "smoke test audience",
+                "call_to_action": "contact us",
                 "region": "CN",
-                "competitors": ["竞品A"],
-                "banned_words": ["保证结果"],
+                "competitors": ["competitor-a"],
+                "banned_words": ["guaranteed result"],
                 "glossary": {"GEO": "Generative Engine Optimization"},
                 "platform_preferences": {"wechat": True},
-                "content_boundaries": "禁止误导性承诺",
+                "content_boundaries": "no misleading claims",
             },
         )
-        report["steps"].append({"step": "品牌创建", "ok": True, "id": brand.get("id")})
+        report["steps"].append({"step": "create_brand", "ok": True, "id": brand.get("id")})
 
         asset = http_json(
             "POST",
             "/assets/paste",
             {
                 "brand_id": brand["id"],
-                "title": "冒烟素材",
+                "title": "smoke asset",
                 "platform": "wechat",
-                "raw_text": "这是一条用于 GEO 闭环验证的冒烟测试素材。",
+                "raw_text": "This is a smoke test asset used to verify the GEO closed-loop flow.",
                 "tags": ["smoke"],
             },
         )
-        report["steps"].append({"step": "素材粘贴", "ok": True, "id": asset.get("id")})
+        report["steps"].append({"step": "paste_asset", "ok": True, "id": asset.get("id")})
 
         analysis = http_json(
             "POST",
             "/analysis/run",
             {
                 "brand_id": brand["id"],
-                "keyword_seeds": ["婚姻修复", "信任重建方案", "情感咨询"],
-                "competitor_keywords": ["竞品A口碑"],
+                "keyword_seeds": ["marriage recovery", "trust rebuilding plan", "emotion counseling"],
+                "competitor_keywords": ["competitor-a reputation"],
                 "asset_ids": [asset["id"]],
                 "target_platforms": ["wechat", "xiaohongshu", "zhihu"],
             },
         )
-        report["steps"].append({"step": "分析生成", "ok": True, "report_id": analysis.get("report_id")})
+        report["steps"].append({"step": "run_analysis", "ok": True, "report_id": analysis.get("report_id")})
 
         contents = http_json(
             "POST",
@@ -156,7 +156,7 @@ def main() -> int:
         )
         first_content = contents[0]
         first_variant = first_content["variants"][0]
-        report["steps"].append({"step": "内容生成", "ok": True, "content_id": first_content.get("id")})
+        report["steps"].append({"step": "generate_content", "ok": True, "content_id": first_content.get("id")})
 
         task = http_json(
             "POST",
@@ -167,7 +167,7 @@ def main() -> int:
                 "platform": first_variant["platform"],
             },
         )
-        report["steps"].append({"step": "发布任务", "ok": True, "task_id": task.get("id")})
+        report["steps"].append({"step": "create_publish_task", "ok": True, "task_id": task.get("id")})
 
         perf = http_json(
             "POST",
@@ -178,7 +178,7 @@ def main() -> int:
                     {
                         "publish_task_id": task["id"],
                         "content_variant_id": first_variant["id"],
-                        "keyword": "婚姻修复",
+                        "keyword": "marriage recovery",
                         "platform": first_variant["platform"],
                         "reads": 123,
                         "likes": 18,
@@ -188,14 +188,14 @@ def main() -> int:
                 ],
             },
         )
-        report["steps"].append({"step": "表现回填", "ok": True, "count": len(perf)})
+        report["steps"].append({"step": "import_performance", "ok": True, "count": len(perf)})
 
         insights = http_json(
             "POST",
             "/optimization-insights/run",
             {"brand_id": brand["id"], "lookback_days": 30},
         )
-        report["steps"].append({"step": "优化建议", "ok": True, "count": len(insights)})
+        report["steps"].append({"step": "run_optimization_insights", "ok": True, "count": len(insights)})
 
         report["status"] = "pass"
     except Exception as exc:
@@ -208,8 +208,8 @@ def main() -> int:
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     latest_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"[冒烟] 状态={report['status']}")
-    print(f"[冒烟] 报告={report_path}")
+    print(f"[smoke] status={report['status']}")
+    print(f"[smoke] report={report_path}")
     if report["status"] != "pass":
         return 1
     return 0

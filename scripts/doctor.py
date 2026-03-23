@@ -1,10 +1,10 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
 import socket
 import subprocess
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -43,7 +43,6 @@ def discover_root() -> Path:
         ).exists():
             return candidate
 
-    # Fallback to the original location assumption.
     return here.parents[1]
 
 
@@ -198,10 +197,10 @@ def main() -> int:
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     latest_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"[体检] 状态={status}")
-    print(f"[体检] 报告={report_path}")
+    print(f"[doctor] status={status}")
+    print(f"[doctor] report={report_path}")
     if status != "pass":
-        print(f"[体检] 关键项失败: {', '.join(failed_critical)}")
+        print(f"[doctor] failed_critical={', '.join(failed_critical)}")
         return 1
     return 0
 
