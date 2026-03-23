@@ -48,6 +48,7 @@ class AnalysisRunRequest(BaseModel):
 class AnalysisRunResponse(BaseModel):
     report_id: str
     title: str
+    report_type: str = "strategy"
     keyword_layers: Dict[str, List[Dict[str, Any]]]
     gap_analysis: Dict[str, Any]
     recommendations: List[str]
@@ -296,12 +297,14 @@ async def run_analysis(request: AnalysisRunRequest, db: AsyncSession = Depends(g
         )
         competitor_analysis["agent_team_report"] = agent_team_report
 
+    report_type = "expert_team" if agent_team_report else "strategy"
+
     report = AnalysisReport(
         id=str(uuid.uuid4()),
         workspace_id=workspace_id,
         brand_id=request.brand_id,
         title=report_title,
-        report_type="strategy",
+        report_type=report_type,
         input_payload=request.model_dump(),
         keyword_layers=keyword_layers,
         gap_analysis=data_layer,
@@ -317,6 +320,7 @@ async def run_analysis(request: AnalysisRunRequest, db: AsyncSession = Depends(g
     return AnalysisRunResponse(
         report_id=report.id,
         title=report.title,
+        report_type=report.report_type,
         keyword_layers=report.keyword_layers,
         gap_analysis=report.gap_analysis,
         recommendations=report.recommendations,
@@ -342,6 +346,7 @@ async def list_reports(
         AnalysisRunResponse(
             report_id=r.id,
             title=r.title,
+            report_type=r.report_type or "strategy",
             keyword_layers=r.keyword_layers,
             gap_analysis=r.gap_analysis,
             recommendations=r.recommendations,

@@ -47,6 +47,17 @@
 - 效果：默认阻止直接 `git push origin main`，必须走分支 + PR。
 - 紧急放行（仅应急）：`ALLOW_MAIN_PUSH=1 git push origin main`
 
+### 3.2 PR 审查落地标准链路
+
+1. 本地拉取分支后先执行：
+   - `python scripts/pr_runtime_check.py`
+2. 生成变更与风险摘要：
+   - `python scripts/pr_review_loop.py --pr <编号>`
+3. 按报告逐项处理后，执行：
+   - `体检系统.bat`
+   - `冒烟验收.bat`
+4. 仅在 `doctor + smoke` 通过后合并 PR
+
 ## 4. 安全基线
 
 1. 已暴露过的密钥必须轮换：
@@ -57,6 +68,13 @@
 2. 环境变量只保存在 Railway，不写入仓库。
 3. 提交前执行：
    - `python scripts/repo_preflight.py`
+
+## 6. 异常会话恢复 SOP（60 秒）
+
+1. 命令执行异常时先跑：`python scripts/pr_runtime_check.py`
+2. 若 `ComSpec/PATHEXT` 异常，重开终端并重新执行启动脚本
+3. 再次执行 `pr_runtime_check`，确认状态为 `pass`
+4. 继续 PR 审查与合并流程
 
 ## 5. 最小验收
 

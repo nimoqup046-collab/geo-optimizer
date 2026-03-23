@@ -160,6 +160,7 @@ import {
   publishApi,
   systemApi,
   performanceInsightsApi,
+  type AnalysisReport,
   type DemoStatusResponse,
   type ReadinessResponse,
   type CorrelationResponse
@@ -204,6 +205,9 @@ const perfData = ref<CorrelationResponse>({ correlations: [], insights: [], tota
 
 const formatTime = (value: string) => new Date(value).toLocaleString()
 
+const isExpertReport = (report: AnalysisReport) =>
+  report.report_type === 'expert_team' || report.title?.includes('专家') || false
+
 const load = async () => {
   loading.value = true
   loadError.value = ''
@@ -227,7 +231,7 @@ const load = async () => {
       assets: assets.length,
       reports: reportList.length,
       contents: contents.length,
-      expertReports: reportList.filter((r) => r.title?.includes('专家')).length
+      expertReports: reportList.filter((r) => isExpertReport(r)).length
     }
     expertTeamEnabled.value = teamConfig.feature_enabled
     expertRoles.value = teamConfig.roles || []

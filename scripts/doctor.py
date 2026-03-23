@@ -9,6 +9,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+try:
+    from runtime_tools import ensure_runtime_env
+except Exception:  # pragma: no cover
+    def ensure_runtime_env() -> dict[str, str]:
+        os.environ.setdefault("SystemRoot", r"C:\Windows")
+        os.environ.setdefault("windir", r"C:\Windows")
+        os.environ.setdefault("ComSpec", r"C:\Windows\System32\cmd.exe")
+        os.environ["PATHEXT"] = ".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL"
+        return {
+            "SystemRoot": os.environ.get("SystemRoot", ""),
+            "windir": os.environ.get("windir", ""),
+            "ComSpec": os.environ.get("ComSpec", ""),
+            "PATHEXT": os.environ.get("PATHEXT", ""),
+        }
+
 
 def discover_root() -> Path:
     candidates: list[Path] = []
@@ -144,12 +159,15 @@ def _check_pid_file(name: str) -> CheckResult:
 
 
 def main() -> int:
+    runtime_env = ensure_runtime_env()
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     py_ok, py_detail = _resolve_python()
     npm_ok, npm_detail = _resolve_npm()
 
     checks: dict[str, CheckResult] = {
+        "runtime_shell": CheckResult(bool(runtime_env.get("ComSpec")), runtime_env.get("ComSpec", "")),
+        "runtime_pathext": CheckResult(".EXE" in runtime_env.get("PATHEXT", "").upper(), runtime_env.get("PATHEXT", "")),
         "python": CheckResult(py_ok, py_detail),
         "npm": CheckResult(npm_ok, npm_detail),
         "backend_main": CheckResult((BACKEND_DIR / "main.py").exists(), "backend/main.py"),
