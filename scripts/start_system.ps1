@@ -11,19 +11,6 @@ New-Item -ItemType Directory -Path (Join-Path $Root "data\uploads") -Force | Out
 New-Item -ItemType Directory -Path (Join-Path $Root "data\exports") -Force | Out-Null
 New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
 
-function Assert-LastExitCode([string]$StepName) {
-  if ($null -eq $LASTEXITCODE) {
-    if (-not $?) {
-      throw "$StepName failed without exit code."
-    }
-    return
-  }
-
-  if ($LASTEXITCODE -ne 0) {
-    throw "$StepName failed with exit code $LASTEXITCODE"
-  }
-}
-
 function Invoke-External {
   param(
     [Parameter(Mandatory = $true)][string]$StepName,
