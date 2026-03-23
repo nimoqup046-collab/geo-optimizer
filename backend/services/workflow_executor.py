@@ -1,4 +1,4 @@
-"""Workflow step execution engine with adapter registry and retry logic.
+﻿"""Workflow step execution engine with adapter registry and retry logic.
 
 Adapters are registered by name and dispatched at runtime. Each adapter
 receives the step's input_payload + config and returns an output dict.
@@ -46,10 +46,12 @@ class AdapterRegistry:
     @classmethod
     def register(cls, name: str):
         """Decorator to register an adapter class."""
+
         def wrapper(adapter_cls: Type[BaseAdapter]):
             adapter_cls.name = name
             cls._adapters[name] = adapter_cls
             return adapter_cls
+
         return wrapper
 
     @classmethod
@@ -68,6 +70,7 @@ class AdapterRegistry:
 @dataclass
 class ExecutionResult:
     """Result of a workflow step execution."""
+
     status: str  # "completed" | "failed" | "retrying"
     output_payload: Dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
@@ -85,13 +88,15 @@ class ExecutionResult:
 class MockAdapter(BaseAdapter):
     """Mock adapter for testing."""
 
-    async def execute(self, input_payload: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(
+        self, input_payload: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         await asyncio.sleep(0.1)  # Simulate work
         return {
             "adapter": "mock",
             "status": "mock_completed",
             "input_echo": input_payload,
-            "message": "Mock 适配器执行成功。",
+            "message": "Mock adapter executed successfully.",
         }
 
 
@@ -99,13 +104,15 @@ class MockAdapter(BaseAdapter):
 class ContentGenerateAdapter(BaseAdapter):
     """Generate content for a specific platform using the LLM pipeline."""
 
-    async def execute(self, input_payload: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(
+        self, input_payload: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         from services.llm_service import generate_content
         from services.template_manager import format_generation_prompt
 
         topic = input_payload.get("topic", "")
         platform = input_payload.get("platform", "wechat")
-        brand_name = input_payload.get("brand_name", "品牌方")
+        brand_name = input_payload.get("brand_name", "brand")
         provider = config.get("provider")
 
         prompt = format_generation_prompt(
@@ -132,7 +139,9 @@ class ContentGenerateAdapter(BaseAdapter):
 class WechatRichPostAdapter(BaseAdapter):
     """Generate a WeChat rich post article."""
 
-    async def execute(self, input_payload: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(
+        self, input_payload: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         from services.wechat_rich_post import generate_wechat_article
 
         article = await generate_wechat_article(
@@ -152,17 +161,20 @@ class WechatRichPostAdapter(BaseAdapter):
 class GeoScoreAdapter(BaseAdapter):
     """Compute GEO scores for given content text."""
 
-    async def execute(self, input_payload: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
-        from services.geo_scorer import GEOScorer
+    async def execute(
+        self, input_payload: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        from services.geo_scorer import compute_geo_score
 
         content = input_payload.get("content", "")
         platform = input_payload.get("platform", "wechat")
-        scorer = GEOScorer()
-        scores = scorer.score(content, platform=platform)
+        keywords = input_payload.get("keywords")
+
+        score_card = compute_geo_score(content, keywords=keywords, platform=platform)
         return {
             "adapter": "geo_score",
             "platform": platform,
-            "scores": scores.to_dict() if hasattr(scores, "to_dict") else str(scores),
+            "scores": score_card.to_dict(),
         }
 
 
@@ -170,11 +182,15 @@ class GeoScoreAdapter(BaseAdapter):
 class GeoOptimizeAdapter(BaseAdapter):
     """Apply GEO optimization strategies to content."""
 
-    async def execute(self, input_payload: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(
+        self, input_payload: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         from services.geo_strategies import apply_multiple_strategies
 
         content = input_payload.get("content", "")
-        strategies = input_payload.get("strategies", ["citation_enhancement", "statistics_addition"])
+        strategies = input_payload.get(
+            "strategies", ["citation_enhancement", "statistics_addition"]
+        )
         provider = config.get("provider")
 
         results = await apply_multiple_strategies(content, strategies, provider=provider)
@@ -189,7 +205,9 @@ class GeoOptimizeAdapter(BaseAdapter):
 class ExpertPipelineAdapter(BaseAdapter):
     """Run the 5-expert GEO analysis pipeline."""
 
-    async def execute(self, input_payload: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(
+        self, input_payload: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         from services.expert_team import run_expert_pipeline
 
         report = await run_expert_pipeline(
@@ -205,10 +223,15 @@ class ExpertPipelineAdapter(BaseAdapter):
 
 @AdapterRegistry.register("full_pipeline")
 class FullPipelineAdapter(BaseAdapter):
-    """End-to-end content pipeline: generate → score → auto-optimize → score."""
+    """End-to-end content pipeline: generate -> score -> auto-optimize -> score."""
 
-    async def execute(self, input_payload: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
-        from services.geo_scorer import compute_geo_score, suggest_optimization_strategies
+    async def execute(
+        self, input_payload: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        from services.geo_scorer import (
+            compute_geo_score,
+            suggest_optimization_strategies,
+        )
         from services.geo_strategies import apply_strategy
 
         # Step 1: Generate content.
@@ -234,7 +257,8 @@ class FullPipelineAdapter(BaseAdapter):
                 for s_name in strategies[:2]:
                     try:
                         result = await apply_strategy(
-                            s_name, content,
+                            s_name,
+                            content,
                             provider=config.get("provider"),
                         )
                         content = result.optimized_text
@@ -246,7 +270,9 @@ class FullPipelineAdapter(BaseAdapter):
                             s_name,
                             exc,
                         )
-                score_card = compute_geo_score(content, keywords=keywords, platform=platform)
+                score_card = compute_geo_score(
+                    content, keywords=keywords, platform=platform
+                )
                 scores = score_card.to_dict()
 
         return {
@@ -278,7 +304,10 @@ async def execute_step(
     if not adapter_cls:
         return ExecutionResult(
             status="failed",
-            error=f"未知适配器: {adapter_name}，可用: {AdapterRegistry.list_adapters()}",
+            error=(
+                f"unknown adapter: {adapter_name}; "
+                f"available adapters: {AdapterRegistry.list_adapters()}"
+            ),
             started_at=datetime.now(timezone.utc).isoformat(),
             finished_at=datetime.now(timezone.utc).isoformat(),
         )
@@ -306,11 +335,15 @@ async def execute_step(
             last_error = str(exc)
             logger.warning(
                 "Adapter '%s' attempt %d/%d failed (%.0fms): %s",
-                adapter_name, attempt + 1, retry_limit + 1, duration_ms, last_error,
+                adapter_name,
+                attempt + 1,
+                retry_limit + 1,
+                duration_ms,
+                last_error,
             )
 
             if attempt < retry_limit:
-                backoff = 2 ** attempt  # 1s, 2s, 4s, ...
+                backoff = 2**attempt  # 1s, 2s, 4s, ...
                 await asyncio.sleep(backoff)
 
     return ExecutionResult(
