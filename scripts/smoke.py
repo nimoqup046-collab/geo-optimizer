@@ -10,6 +10,16 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+try:
+    from runtime_tools import ensure_runtime_env
+except Exception:  # pragma: no cover
+    def ensure_runtime_env() -> dict[str, str]:
+        os.environ.setdefault("SystemRoot", r"C:\Windows")
+        os.environ.setdefault("windir", r"C:\Windows")
+        os.environ.setdefault("ComSpec", r"C:\Windows\System32\cmd.exe")
+        os.environ["PATHEXT"] = ".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL"
+        return {}
+
 
 def discover_root() -> Path:
     candidates: list[Path] = []
@@ -76,6 +86,7 @@ def http_json(method: str, path: str, payload: dict[str, Any] | None = None) -> 
 
 
 def main() -> int:
+    ensure_runtime_env()
     report: dict[str, Any] = {
         "status": "fail",
         "timestamp": datetime.now().isoformat(),

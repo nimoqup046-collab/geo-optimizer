@@ -1,5 +1,8 @@
 $ErrorActionPreference = "Stop"
 
+. "$PSScriptRoot\runtime_env.ps1"
+Set-GeoRuntimeEnvironment
+
 $Root = Split-Path -Parent $PSScriptRoot
 $BackendDir = Join-Path $Root "backend"
 $FrontendDir = Join-Path $Root "frontend"
@@ -28,48 +31,18 @@ function Invoke-External {
     [Parameter(Mandatory = $false)][string[]]$Arguments = @()
   )
 
-  & $FilePath @Arguments
-  Assert-LastExitCode -StepName $StepName
+  $result = Invoke-GeoExternal -StepName $StepName -FilePath $FilePath -Arguments $Arguments
+  if ($result.StdOut) {
+    Write-Host $result.StdOut
+  }
 }
 
 function Resolve-PythonExe {
-  try {
-    $pyPath = (& py -3.13 -c "import sys; print(sys.executable)" 2>$null).Trim()
-    if ($pyPath -and (Test-Path $pyPath)) {
-      return $pyPath
-    }
-  } catch {}
-
-  if (Test-Path "C:\Python313\python.exe") {
-    return "C:\Python313\python.exe"
-  }
-
-  $cmd = Get-Command python -ErrorAction SilentlyContinue
-  if ($cmd) {
-    return $cmd.Source
-  }
-
-  throw "Python not found. Install Python 3.13 or add it to PATH."
+  return Resolve-GeoPythonExe -ProjectRoot $Root
 }
 
 function Resolve-NpmCmd {
-  if ($env:NVM_SYMLINK) {
-    $nvmNpm = Join-Path $env:NVM_SYMLINK "npm.cmd"
-    if (Test-Path $nvmNpm) {
-      return $nvmNpm
-    }
-  }
-
-  if (Test-Path "C:\nvm4w\nodejs\npm.cmd") {
-    return "C:\nvm4w\nodejs\npm.cmd"
-  }
-
-  $cmd = Get-Command npm.cmd -ErrorAction SilentlyContinue
-  if ($cmd) {
-    return $cmd.Source
-  }
-
-  throw "npm not found. Install Node.js and npm."
+  return Resolve-GeoNpmCmd
 }
 
 function Ensure-ProcessStopped([string]$PidFilePath) {

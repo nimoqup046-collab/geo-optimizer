@@ -1,3 +1,6 @@
+import os
+import shutil
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -9,6 +12,29 @@ from database import engine
 
 
 router = APIRouter(prefix="/system", tags=["system"])
+
+
+def _command_check(candidates: list[list[str]]) -> tuple[bool, str]:
+    for cmd in candidates:
+        exe = cmd[0]
+        if shutil.which(exe) is None and not Path(exe).exists():
+            continue
+        try:
+            proc = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=8,
+                check=False,
+            )
+            output = (proc.stdout or "").strip()
+            if proc.returncode == 0:
+                return True, output or "ok"
+            return False, output or f"exit={proc.returncode}"
+        except Exception as exc:  # pragma: no cover
+            return False, str(exc)
+    return False, "not found"
 
 
 @router.get("/readiness")
@@ -81,9 +107,30 @@ async def readiness_check():
         "FEATURE_COMPETITOR_ANALYSIS": settings.FEATURE_COMPETITOR_ANALYSIS,
     }
 
+    runtime_shell = os.getenv("ComSpec") or ("/bin/sh" if Path("/bin/sh").exists() else "")
+    runtime_python_ok, runtime_python_detail = _command_check(
+        [["python", "--version"], ["py", "-3.13", "--version"]]
+    )
+    runtime_git_ok, runtime_git_detail = _command_check([["git", "--version"]])
+    runtime_npm_ok, runtime_npm_detail = _command_check([["npm", "--version"], ["npm.cmd", "--version"]])
+
+    runtime_env_detail = {
+        "shell": runtime_shell or "unknown",
+        "pathext_present": bool(os.getenv("PATHEXT")),
+        "path_present": bool(os.getenv("PATH")),
+        "python_detail": runtime_python_detail,
+        "git_detail": runtime_git_detail,
+        "npm_detail": runtime_npm_detail,
+    }
+
     return {
         "status": "ok" if all_ok else "degraded",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
         "feature_flags": feature_flags,
+        "runtime_shell_ok": bool(runtime_shell),
+        "runtime_python_ok": runtime_python_ok,
+        "runtime_git_ok": runtime_git_ok,
+        "runtime_npm_ok": runtime_npm_ok,
+        "runtime_env_detail": runtime_env_detail,
     }

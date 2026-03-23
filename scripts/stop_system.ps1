@@ -1,5 +1,8 @@
 $ErrorActionPreference = "Stop"
 
+. "$PSScriptRoot\runtime_env.ps1"
+Set-GeoRuntimeEnvironment
+
 $Root = Split-Path -Parent $PSScriptRoot
 $RunDir = Join-Path $Root "data\run"
 

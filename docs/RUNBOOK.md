@@ -24,6 +24,7 @@
 - `.env` 对 `.env.example` 的键完整性
 - 端口状态（8000 / 5173）
 - PID 文件存在性
+- 运行时环境（`ComSpec` / `PATHEXT`）健壮性
 
 ## 3）冒烟验收（Smoke）
 
@@ -43,6 +44,29 @@
 
 - `GET /api/v1/system/readiness`
 - 检查数据库、目录、LLM 配置状态和 feature flags。
+- 附加返回运行时诊断字段：
+  - `runtime_shell_ok`
+  - `runtime_python_ok`
+  - `runtime_git_ok`
+  - `runtime_npm_ok`
+  - `runtime_env_detail`
+
+## 4.1）PR 运行时检查与审查回路
+
+- 运行时检查：
+  - `python scripts/pr_runtime_check.py`
+  - 输出：`data/reports/pr-runtime-check-latest.json`
+- PR 审查回路：
+  - `python scripts/pr_review_loop.py --pr <编号>`
+  - 输出：`data/reports/pr-review-latest.json`
+
+## 4.2）异常会话 60 秒恢复 SOP
+
+当终端出现命令无法识别、`ComSpec`/`PATHEXT` 异常时：
+1. 先运行：`python scripts/pr_runtime_check.py`
+2. 若失败，重新打开终端后执行：`scripts/start_system.ps1`
+3. 再次运行：`python scripts/pr_runtime_check.py` 确认 `pass`
+4. 继续执行 `体检系统.bat` 与 `冒烟验收.bat`
 
 ## 5）真实资料导入
 
