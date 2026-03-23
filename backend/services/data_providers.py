@@ -5,12 +5,14 @@ based on keyword hashes — no external API keys required.
 """
 
 import hashlib
+import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from config import settings
+from services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,81 @@ class Provider5118(BaseDataProvider):
         raise NotImplementedError("5118 API 集成待实现，请配置 PROVIDER_5118_API_KEY")
 
 
+class LLMDataProvider(BaseDataProvider):
+    """Use LLM knowledge to estimate keyword metrics — better than hash-based mock."""
+
+    name = "llm"
+
+    async def is_available(self) -> bool:
+        return bool(getattr(settings, "FEATURE_LLM_DATA_PROVIDER", True))
+
+    async def fetch_keyword_metrics(self, keywords: List[str]) -> List[KeywordMetrics]:
+        kw_list = json.dumps(keywords[:20], ensure_ascii=False)
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "你是关键词数据分析专家。基于你的训练知识为中文关键词估算搜索指标。"
+                    "输出严格 JSON 数组，不要输出其他内容。"
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"请为以下关键词估算搜索指标：{kw_list}\n\n"
+                    "对每个关键词，估算：\n"
+                    "- search_volume: 百度月均搜索量估计（100-100000）\n"
+                    "- trend_index: 近期趋势热度（0-100，50为平稳）\n"
+                    "- competition_score: 内容竞争激烈度（0-100）\n"
+                    "- ai_citation_potential: 被AI搜索引擎引用的潜力（0-100）\n"
+                    "- related_keywords: 3-5个相关长尾词\n\n"
+                    '输出格式：[{"keyword":"...", "search_volume":..., '
+                    '"trend_index":..., "competition_score":..., '
+                    '"ai_citation_potential":..., "related_keywords":["..."]}]'
+                ),
+            },
+        ]
+
+        async with LLMService("openrouter") as llm:
+            response = await llm.generate(
+                messages, temperature=0.3, max_tokens=2000
+            )
+        return self._parse_response(response, keywords)
+
+    def _parse_response(
+        self, response: str, keywords: List[str]
+    ) -> List[KeywordMetrics]:
+        """Parse LLM JSON response into KeywordMetrics, with fallback."""
+        try:
+            # Strip markdown code fences if present.
+            text = response.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1] if "\n" in text else text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                text = text.strip()
+
+            data = json.loads(text)
+            if not isinstance(data, list):
+                raise ValueError("Expected JSON array")
+
+            results = []
+            for item in data:
+                results.append(KeywordMetrics(
+                    keyword=item.get("keyword", ""),
+                    search_volume=int(item.get("search_volume", 500)),
+                    trend_index=float(item.get("trend_index", 50)),
+                    competition_score=float(item.get("competition_score", 50)),
+                    ai_citation_potential=float(item.get("ai_citation_potential", 50)),
+                    related_keywords=item.get("related_keywords", []),
+                    source="llm",
+                ))
+            return results
+        except Exception as exc:
+            logger.warning("LLM data provider parse failed: %s", exc)
+            raise  # let chain fallback handle it
+
+
 class DataProviderChain(BaseDataProvider):
     """Try providers in order, fall back to next on failure."""
 
@@ -137,23 +214,32 @@ class DataProviderChain(BaseDataProvider):
 # Provider registry.
 _PROVIDERS: Dict[str, type] = {
     "mock": MockDataProvider,
+    "llm": LLMDataProvider,
     "baidu_index": BaiduIndexProvider,
     "5118": Provider5118,
 }
 
 
 def get_provider(provider_name: Optional[str] = None) -> BaseDataProvider:
-    """Return configured data provider with fallback chain."""
+    """Return configured data provider with fallback chain.
+
+    Priority: 5118 > BaiduIndex > LLM > Mock
+    """
     name = provider_name or getattr(settings, "DATA_PROVIDER", "mock")
 
     if name == "mock":
         return MockDataProvider()
 
-    # Build chain: requested → mock fallback.
+    if name == "llm":
+        return DataProviderChain([LLMDataProvider(), MockDataProvider()])
+
+    # Build chain: requested → llm fallback → mock fallback.
     chain: List[BaseDataProvider] = []
     cls = _PROVIDERS.get(name)
     if cls:
         chain.append(cls())
+    if settings.FEATURE_LLM_DATA_PROVIDER:
+        chain.append(LLMDataProvider())
     chain.append(MockDataProvider())
     return DataProviderChain(chain)
 
@@ -166,9 +252,10 @@ def list_providers() -> List[Dict[str, Any]]:
             "name": name,
             "display_name": {
                 "mock": "模拟数据",
+                "llm": "LLM 智能估算",
                 "baidu_index": "百度指数",
                 "5118": "5118 SEO数据",
             }.get(name, name),
-            "requires_key": name != "mock",
+            "requires_key": name not in ("mock", "llm"),
         })
     return results

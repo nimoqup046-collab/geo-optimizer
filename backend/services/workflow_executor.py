@@ -203,6 +203,55 @@ class ExpertPipelineAdapter(BaseAdapter):
         }
 
 
+@AdapterRegistry.register("full_pipeline")
+class FullPipelineAdapter(BaseAdapter):
+    """End-to-end content pipeline: generate → score → auto-optimize → score."""
+
+    async def execute(self, input_payload: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        from services.geo_scorer import compute_geo_score, suggest_optimization_strategies
+        from services.geo_strategies import apply_strategy
+
+        # Step 1: Generate content.
+        gen_adapter = AdapterRegistry.get("content_generate")
+        if not gen_adapter:
+            raise RuntimeError("content_generate adapter not registered")
+        gen_result = await gen_adapter().execute(input_payload, config)
+        content = gen_result.get("content", "")
+
+        # Step 2: Score.
+        keywords = input_payload.get("keywords", [])
+        platform = input_payload.get("platform")
+        score_card = compute_geo_score(content, keywords=keywords, platform=platform)
+        scores = score_card.to_dict()
+
+        # Step 3: Auto-optimize if below threshold.
+        threshold = config.get("threshold", 68.0)
+        strategies_applied = []
+        if score_card.overall < threshold:
+            strategies = suggest_optimization_strategies(score_card)
+            if strategies:
+                for s_name in strategies[:2]:
+                    try:
+                        result = await apply_strategy(
+                            s_name, content,
+                            provider=config.get("provider"),
+                        )
+                        content = result.optimized_text
+                        strategies_applied.append(s_name)
+                    except Exception:
+                        pass
+                score_card = compute_geo_score(content, keywords=keywords, platform=platform)
+                scores = score_card.to_dict()
+
+        return {
+            "adapter": "full_pipeline",
+            "content": content,
+            "scores": scores,
+            "auto_optimized": bool(strategies_applied),
+            "strategies_applied": strategies_applied,
+        }
+
+
 # ---------------------------------------------------------------------------
 # Execution engine with retry
 # ---------------------------------------------------------------------------

@@ -65,8 +65,13 @@ class Settings(BaseSettings):
     FEATURE_RANKING_MONITOR: bool = True
     FEATURE_COMPETITOR_ANALYSIS: bool = True
 
+    # GEO auto-optimization settings.
+    GEO_AUTO_OPTIMIZE_THRESHOLD: float = 68.0  # auto-optimize when overall < this
+    GEO_AUTO_OPTIMIZE_MAX_ROUNDS: int = 1  # max optimization rounds (avoid loops)
+
     # Data provider config.
-    DATA_PROVIDER: str = "mock"  # mock | baidu_index | 5118
+    DATA_PROVIDER: str = "llm"  # llm | mock | baidu_index | 5118
+    FEATURE_LLM_DATA_PROVIDER: bool = True
     BAIDU_INDEX_API_KEY: Optional[str] = None
     PROVIDER_5118_API_KEY: Optional[str] = None
 

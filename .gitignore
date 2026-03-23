@@ -29,6 +29,7 @@ data/uploads/*
 data/exports/*
 data/reports/*
 data/run/*
+data/experiences/*
 !data/.gitkeep
 
 # Deployment staging and local temp probes

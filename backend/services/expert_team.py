@@ -16,7 +16,13 @@ from typing import Any, Dict, List, Optional
 
 from config import settings
 from services.expert_prompts import build_expert_user_prompt, get_expert_system_prompt
-from services.geo_scorer import compute_geo_score
+from services.experience_service import (
+    OptimizationExperience,
+    build_experience_context,
+    save_experience,
+)
+from services.geo_scorer import compute_geo_score, suggest_optimization_strategies
+from services.geo_strategies import apply_strategy
 from services.llm_service import LLMService
 
 
@@ -190,10 +196,26 @@ async def run_expert_pipeline(
         "region": brand_data.get("region", ""),
     }
 
+    # Inject historical optimization experience (if any).
+    brand_id = brand_data.get("name", "default")
+    platforms = target_platforms or ["wechat"]
+    try:
+        exp_context = await build_experience_context(brand_id, platforms[0])
+        if exp_context:
+            context["optimization_experience"] = exp_context
+    except Exception:
+        pass  # non-critical — proceed without experience
+
     # Step 1: Chief Strategist.
     strategy_output = await _run_expert(
         ExpertRole.CHIEF_STRATEGIST, base_payload, context, provider
     )
+
+    # Inject prior insights for downstream experts.
+    context["prior_insights"] = {
+        "strategy_positioning": strategy_output.content[:300],
+        "priority_actions_hint": "见战略报告",
+    }
 
     # Step 2: Parallel — Data Analyst + GEO Optimizer.
     enriched_payload = {
@@ -204,6 +226,10 @@ async def run_expert_pipeline(
         _run_expert(ExpertRole.DATA_ANALYST, enriched_payload, context, provider),
         _run_expert(ExpertRole.GEO_OPTIMIZER, enriched_payload, context, provider),
     )
+
+    # Enrich context with Step 2 insights for downstream experts.
+    context["prior_insights"]["data_coverage_gaps"] = analysis_output.content[:300]
+    context["prior_insights"]["geo_weaknesses"] = geo_output.content[:300]
 
     # Step 3: Content Architect — uses all prior outputs.
     content_payload = {
@@ -220,15 +246,71 @@ async def run_expert_pipeline(
     review_payload = {
         "brand": brand_data,
         "content_to_review": content_output.content,
-        "strategy_summary": strategy_output.content[:500],
+        "strategy_summary": strategy_output.content[:800],
         "target_platforms": target_platforms or ["wechat"],
     }
     review_output = await _run_expert(
         ExpertRole.QUALITY_REVIEWER, review_payload, context, provider
     )
 
-    # Compute GEO scores on generated content.
-    score_card = compute_geo_score(content_output.content)
+    # Step 5: GEO scoring + auto-optimization feedback loop.
+    keywords_flat: List[str] = []
+    for layer_kws in (keyword_layers or {}).values():
+        if isinstance(layer_kws, list):
+            keywords_flat.extend(layer_kws)
+    platforms = target_platforms or ["wechat"]
+
+    score_card = compute_geo_score(
+        content_output.content,
+        keywords=keywords_flat[:10] if keywords_flat else None,
+        platform=platforms[0] if platforms else None,
+    )
+
+    if (
+        score_card.overall < settings.GEO_AUTO_OPTIMIZE_THRESHOLD
+        and settings.GEO_AUTO_OPTIMIZE_MAX_ROUNDS > 0
+    ):
+        strategies = suggest_optimization_strategies(score_card)
+        if strategies:
+            optimized_content = content_output.content
+            for strategy_name in strategies[:2]:
+                try:
+                    result = await apply_strategy(
+                        strategy_name, optimized_content, provider=provider
+                    )
+                    optimized_content = result.optimized_text
+                except Exception:
+                    pass  # skip failed strategy, continue with others
+
+            pre_score = score_card.overall
+            score_card = compute_geo_score(
+                optimized_content,
+                keywords=keywords_flat[:10] if keywords_flat else None,
+                platform=platforms[0] if platforms else None,
+            )
+            content_output = ExpertOutput(
+                role=content_output.role,
+                label=content_output.label + " (GEO优化版)",
+                model=content_output.model,
+                content=optimized_content,
+                duration_ms=content_output.duration_ms,
+            )
+
+            # Save optimization experience for future reference.
+            for s_name in strategies[:2]:
+                try:
+                    await save_experience(OptimizationExperience(
+                        brand_id=brand_id,
+                        platform=platforms[0],
+                        industry=brand_data.get("industry", ""),
+                        strategy_name=s_name,
+                        score_before=pre_score,
+                        score_after=score_card.overall,
+                        improvement=score_card.overall - pre_score,
+                        content_type="expert_pipeline",
+                    ))
+                except Exception:
+                    pass  # non-critical
 
     total_duration = int((time.monotonic() - total_start) * 1000)
 

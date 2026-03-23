@@ -17,7 +17,8 @@ from models.content import ContentItem, ContentStatus, ContentVariant
 from models.report import AnalysisReport
 from services.llm_service import generate_content
 from services.prompt_assembler import resolve_prompt_bundle
-from services.geo_scorer import compute_geo_score
+from services.geo_scorer import compute_geo_score, suggest_optimization_strategies
+from services.geo_strategies import apply_strategy
 from services.expert_team import run_expert_pipeline
 
 
@@ -241,12 +242,38 @@ async def generate_content_from_report(
                 "prompt_profile_name": bundle.profile_name,
                 "mode": request.mode,
             }
-            if request.mode == "expert":
-                try:
-                    geo_card = compute_geo_score(generated)
-                    gen_meta["geo_scores"] = geo_card.to_dict()
-                except Exception:
-                    pass
+            # GEO scoring for all modes + auto-optimization when below threshold.
+            try:
+                geo_card = compute_geo_score(
+                    generated, keywords=[topic], platform=platform
+                )
+                gen_meta["geo_scores"] = geo_card.to_dict()
+
+                if (
+                    geo_card.overall < settings.GEO_AUTO_OPTIMIZE_THRESHOLD
+                    and settings.GEO_AUTO_OPTIMIZE_MAX_ROUNDS > 0
+                ):
+                    strategies = suggest_optimization_strategies(geo_card)
+                    if strategies:
+                        provider_name = (
+                            request.llm_provider or settings.DEFAULT_LLM_PROVIDER
+                        )
+                        for s in strategies[:2]:
+                            try:
+                                result = await apply_strategy(
+                                    s, generated, provider=provider_name
+                                )
+                                generated = result.optimized_text
+                            except Exception:
+                                pass
+                        geo_card = compute_geo_score(
+                            generated, keywords=[topic], platform=platform
+                        )
+                        gen_meta["geo_scores"] = geo_card.to_dict()
+                        gen_meta["auto_optimized"] = True
+                        gen_meta["strategies_applied"] = strategies[:2]
+            except Exception:
+                pass
 
             variant = ContentVariant(
                 id=str(uuid.uuid4()),
