@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import subprocess
 from datetime import datetime, timezone
@@ -46,7 +46,7 @@ async def readiness_check():
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        checks["database"] = {"ok": True, "detail": "数据库可连接"}
+        checks["database"] = {"ok": True, "detail": "database connected"}
     except Exception as exc:  # pragma: no cover
         checks["database"] = {"ok": False, "detail": str(exc)}
 
@@ -64,20 +64,20 @@ async def readiness_check():
     }
     checks["llm_provider_key"] = {
         "ok": selected_key_ok,
-        "detail": f"{selected_provider}:{'已配置' if selected_key_ok else '缺少密钥'}",
+        "detail": f"{selected_provider}:{'configured' if selected_key_ok else 'missing_key'}",
     }
     checks["llm_keys"] = {
         "ok": any(llm_key_status.values()),
         "detail": ",".join(
             [
-                f"{name}={'已设置' if enabled else '未设置'}"
+                f"{name}={'configured' if enabled else 'missing'}"
                 for name, enabled in llm_key_status.items()
             ]
         ),
     }
     checks["internal_api_key"] = {
         "ok": True,
-        "detail": "已设置" if settings.INTERNAL_API_KEY else "未设置",
+        "detail": "configured" if settings.INTERNAL_API_KEY else "missing",
     }
     checks["feature_flags"] = {
         "ok": True,
