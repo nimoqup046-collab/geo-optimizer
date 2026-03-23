@@ -73,15 +73,48 @@ function Resolve-GeoPythonExe {
 
   $pyLauncher = Join-Path $env:SystemRoot "py.exe"
   if (Test-Path $pyLauncher) {
-    try {
-      $process = Invoke-GeoExternal -StepName "resolve python via py launcher" -FilePath $pyLauncher -Arguments @("-3.13", "-c", "import sys;print(sys.executable)") -IgnoreExitCode
-      if ($process.ExitCode -eq 0) {
-        $path = ($process.StdOut.Trim())
-        if ($path -and (Test-Path $path)) {
-          return $path
+    $selectors = @()
+    if ($ProjectRoot) {
+      $versionCandidates = @(
+        (Join-Path $ProjectRoot "backend\.python-version"),
+        (Join-Path $ProjectRoot ".python-version")
+      )
+      foreach ($versionFile in $versionCandidates) {
+        if (-not (Test-Path $versionFile)) {
+          continue
         }
+        $raw = (Get-Content -Raw $versionFile).Trim()
+        if (-not $raw) {
+          continue
+        }
+        $line = ($raw -split "`r?`n")[0].Trim()
+        if ($line) {
+          $selectors += "-$line"
+          $major = ($line -split "\.")[0]
+          if ($major -and $major -ne $line) {
+            $selectors += "-$major"
+          }
+        }
+        break
       }
-    } catch {}
+    }
+    $selectors += @("-3.12", "-3", "-3.13")
+    $selectors = @($selectors | Where-Object { $_ } | Select-Object -Unique)
+    foreach ($selector in $selectors) {
+      try {
+        $process = Invoke-GeoExternal -StepName "resolve python via py launcher ($selector)" -FilePath $pyLauncher -Arguments @($selector, "-c", "import sys;print(sys.executable)") -IgnoreExitCode
+        if ($process.ExitCode -eq 0) {
+          $path = ($process.StdOut.Trim())
+          if ($path -and (Test-Path $path)) {
+            return $path
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (Test-Path "C:\Python312\python.exe") {
+    return "C:\Python312\python.exe"
   }
 
   if (Test-Path "C:\Python313\python.exe") {
@@ -93,7 +126,7 @@ function Resolve-GeoPythonExe {
     return $pythonFromPath
   }
 
-  throw "Python executable not found. Checked backend/.venv, py launcher, C:\Python313, PATH."
+  throw "Python executable not found. Checked backend/.venv, py launcher selectors, C:\Python312, C:\Python313, PATH."
 }
 
 function Resolve-GeoNpmCmd {

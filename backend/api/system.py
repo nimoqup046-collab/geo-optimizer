@@ -15,6 +15,7 @@ router = APIRouter(prefix="/system", tags=["system"])
 
 
 def _command_check(candidates: list[list[str]]) -> tuple[bool, str]:
+    last_failure = "not found"
     for cmd in candidates:
         exe = cmd[0]
         if shutil.which(exe) is None and not Path(exe).exists():
@@ -31,10 +32,10 @@ def _command_check(candidates: list[list[str]]) -> tuple[bool, str]:
             output = (proc.stdout or "").strip()
             if proc.returncode == 0:
                 return True, output or "ok"
-            return False, output or f"exit={proc.returncode}"
+            last_failure = output or f"exit={proc.returncode}"
         except Exception as exc:  # pragma: no cover
-            return False, str(exc)
-    return False, "not found"
+            last_failure = str(exc)
+    return False, last_failure
 
 
 @router.get("/readiness")
@@ -109,7 +110,12 @@ async def readiness_check():
 
     runtime_shell = os.getenv("ComSpec") or ("/bin/sh" if Path("/bin/sh").exists() else "")
     runtime_python_ok, runtime_python_detail = _command_check(
-        [["python", "--version"], ["py", "-3.13", "--version"]]
+        [
+            ["python", "--version"],
+            ["py", "-3.12", "--version"],
+            ["py", "-3", "--version"],
+            ["py", "-3.13", "--version"],
+        ]
     )
     runtime_git_ok, runtime_git_detail = _command_check([["git", "--version"]])
     runtime_npm_ok, runtime_npm_detail = _command_check([["npm", "--version"], ["npm.cmd", "--version"]])
