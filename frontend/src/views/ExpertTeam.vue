@@ -193,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, h, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { NButton, NTag, useMessage } from 'naive-ui'
 import { brandApi, analysisApi, type AnalysisReport } from '@/api'
 import {
@@ -218,6 +218,7 @@ const historicalReports = ref<AnalysisReport[]>([])
 const scoreResult = ref<GEOScores | null>(null)
 const optimizeResults = ref<StrategyResult[]>([])
 const radarChartRef = ref<HTMLElement | null>(null)
+const radarChartInstance = ref<any | null>(null)
 
 const brandOptions = computed(() =>
   brands.value.map((b) => ({ label: b.name, value: b.id }))
@@ -230,13 +231,14 @@ const platformOptions = [
   { label: '短视频脚本', value: 'video' }
 ]
 
-const strategyOptions = [
+const defaultStrategyOptions = [
   { label: '引用增强', value: 'citation_enhancement' },
   { label: '统计增强', value: 'statistics_addition' },
   { label: '问答结构化', value: 'qa_structuring' },
   { label: '断言前置', value: 'answer_frontloading' },
   { label: '实体丰富', value: 'entity_enrichment' }
 ]
+const strategyOptions = ref(defaultStrategyOptions)
 
 const analysisForm = reactive({
   brand_id: '',
@@ -261,14 +263,47 @@ function getScoreType(score: number): 'success' | 'warning' | 'error' {
 
 function renderMarkdown(text: string): string {
   if (!text) return ''
-  return text
+  return sanitizeHtml(text
     .replace(/^### (.+)$/gm, '<h4>$1</h4>')
     .replace(/^## (.+)$/gm, '<h3>$1</h3>')
     .replace(/^# (.+)$/gm, '<h2>$1</h2>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^\- (.+)$/gm, '<li>$1</li>')
     .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
-    .replace(/\n/g, '<br/>')
+    .replace(/\n/g, '<br/>'))
+}
+
+function sanitizeHtml(input: string): string {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(input, 'text/html')
+  const blocked = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta'])
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT)
+  const toRemove: Element[] = []
+  const allowedTag = new Set(['h2', 'h3', 'h4', 'strong', 'li', 'br', 'p', 'ul', 'ol', 'a', 'span', 'div'])
+  while (walker.nextNode()) {
+    const el = walker.currentNode as Element
+    const tag = el.tagName.toLowerCase()
+    if (blocked.has(tag) || !allowedTag.has(tag)) {
+      toRemove.push(el)
+      continue
+    }
+    const attrs = Array.from(el.attributes)
+    for (const attr of attrs) {
+      const name = attr.name.toLowerCase()
+      const value = attr.value.trim().toLowerCase()
+      if (name.startsWith('on')) {
+        el.removeAttribute(attr.name)
+        continue
+      }
+      if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) {
+        el.removeAttribute(attr.name)
+      }
+    }
+  }
+  for (const el of toRemove) {
+    el.replaceWith(...Array.from(el.childNodes))
+  }
+  return doc.body.innerHTML
 }
 
 function renderRadarChart() {
@@ -276,7 +311,14 @@ function renderRadarChart() {
   try {
     const echarts = (window as any).echarts
     if (!echarts) return
-    const chart = echarts.init(radarChartRef.value)
+    const existing = echarts.getInstanceByDom(radarChartRef.value)
+    if (existing && !radarChartInstance.value) {
+      radarChartInstance.value = existing
+    }
+    if (!radarChartInstance.value) {
+      radarChartInstance.value = echarts.init(radarChartRef.value)
+    }
+    const chart = radarChartInstance.value
     const scores = latestReport.value.geo_scores
     chart.setOption({
       radar: {
@@ -310,14 +352,23 @@ const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [brandList, roles, reports] = await Promise.all([
+    const [brandList, roles, reports, strategies] = await Promise.all([
       brandApi.list(),
       expertTeamApi.getRoles().catch(() => []),
-      analysisApi.listReports()
+      analysisApi.listReports(),
+      expertTeamApi.getStrategies().catch(() => null)
     ])
     brands.value = brandList
     teamRoles.value = roles
-    historicalReports.value = reports.filter((r) => r.title?.includes('专家'))
+    if (strategies?.strategies?.length) {
+      strategyOptions.value = strategies.strategies.map((value: string) => ({
+        value,
+        label: strategies.descriptions?.[value] || value
+      }))
+    } else {
+      strategyOptions.value = defaultStrategyOptions
+    }
+    historicalReports.value = reports.filter((r) => isExpertReport(r))
     if (!analysisForm.brand_id && brandList.length > 0) {
       analysisForm.brand_id = brandList[0].id
     }
@@ -414,6 +465,17 @@ const reportColumns = [
 
 watch(latestReport, () => {
   nextTick(renderRadarChart)
+})
+
+function isExpertReport(report: AnalysisReport): boolean {
+  return report.report_type === 'expert_team' || report.title?.includes('专家') || false
+}
+
+onUnmounted(() => {
+  if (radarChartInstance.value) {
+    radarChartInstance.value.dispose()
+    radarChartInstance.value = null
+  }
 })
 
 onMounted(load)

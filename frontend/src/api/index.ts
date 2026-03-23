@@ -40,6 +40,7 @@ export interface SourceAsset {
 export interface AnalysisReport {
   report_id: string
   title: string
+  report_type?: string
   keyword_layers: Record<string, any[]>
   gap_analysis: Record<string, any>
   recommendations: string[]
@@ -170,6 +171,11 @@ export interface ReadinessResponse {
   timestamp: string
   checks: Record<string, ReadinessCheck>
   feature_flags?: Record<string, boolean>
+  runtime_shell_ok?: boolean
+  runtime_python_ok?: boolean
+  runtime_git_ok?: boolean
+  runtime_npm_ok?: boolean
+  runtime_env_detail?: Record<string, any>
 }
 
 export interface DemoBootstrapResponse {
