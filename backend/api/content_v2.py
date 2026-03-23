@@ -258,20 +258,26 @@ async def generate_content_from_report(
                         provider_name = (
                             request.llm_provider or settings.DEFAULT_LLM_PROVIDER
                         )
+                        applied_strategies: List[str] = []
+                        strategy_errors: dict[str, str] = {}
                         for s in strategies[:2]:
                             try:
                                 result = await apply_strategy(
                                     s, generated, provider=provider_name
                                 )
                                 generated = result.optimized_text
-                            except Exception:
-                                pass
-                        geo_card = compute_geo_score(
-                            generated, keywords=[topic], platform=platform
-                        )
-                        gen_meta["geo_scores"] = geo_card.to_dict()
-                        gen_meta["auto_optimized"] = True
-                        gen_meta["strategies_applied"] = strategies[:2]
+                                applied_strategies.append(s)
+                            except Exception as exc:
+                                strategy_errors[s] = str(exc)
+                        if applied_strategies:
+                            geo_card = compute_geo_score(
+                                generated, keywords=[topic], platform=platform
+                            )
+                            gen_meta["geo_scores"] = geo_card.to_dict()
+                            gen_meta["auto_optimized"] = True
+                            gen_meta["strategies_applied"] = applied_strategies
+                        if strategy_errors:
+                            gen_meta["strategy_errors"] = strategy_errors
             except Exception:
                 pass
 

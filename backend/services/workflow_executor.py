@@ -227,6 +227,7 @@ class FullPipelineAdapter(BaseAdapter):
         # Step 3: Auto-optimize if below threshold.
         threshold = config.get("threshold", 68.0)
         strategies_applied = []
+        strategy_errors: Dict[str, str] = {}
         if score_card.overall < threshold:
             strategies = suggest_optimization_strategies(score_card)
             if strategies:
@@ -238,8 +239,13 @@ class FullPipelineAdapter(BaseAdapter):
                         )
                         content = result.optimized_text
                         strategies_applied.append(s_name)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        strategy_errors[s_name] = str(exc)
+                        logger.warning(
+                            "full_pipeline strategy apply failed: %s (%s)",
+                            s_name,
+                            exc,
+                        )
                 score_card = compute_geo_score(content, keywords=keywords, platform=platform)
                 scores = score_card.to_dict()
 
@@ -249,6 +255,7 @@ class FullPipelineAdapter(BaseAdapter):
             "scores": scores,
             "auto_optimized": bool(strategies_applied),
             "strategies_applied": strategies_applied,
+            "strategy_errors": strategy_errors,
         }
 
 

@@ -121,7 +121,8 @@ class LLMDataProvider(BaseDataProvider):
     name = "llm"
 
     async def is_available(self) -> bool:
-        return bool(getattr(settings, "FEATURE_LLM_DATA_PROVIDER", True))
+        feature_enabled = bool(getattr(settings, "FEATURE_LLM_DATA_PROVIDER", False))
+        return feature_enabled and bool(getattr(settings, "OPENROUTER_API_KEY", None))
 
     async def fetch_keyword_metrics(self, keywords: List[str]) -> List[KeywordMetrics]:
         kw_list = json.dumps(keywords[:20], ensure_ascii=False)
@@ -256,6 +257,6 @@ def list_providers() -> List[Dict[str, Any]]:
                 "baidu_index": "百度指数",
                 "5118": "5118 SEO数据",
             }.get(name, name),
-            "requires_key": name not in ("mock", "llm"),
+            "requires_key": name not in ("mock",),
         })
     return results

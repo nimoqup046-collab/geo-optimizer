@@ -273,14 +273,17 @@ async def run_expert_pipeline(
         strategies = suggest_optimization_strategies(score_card)
         if strategies:
             optimized_content = content_output.content
+            applied_strategies: List[str] = []
+            strategy_errors: Dict[str, str] = {}
             for strategy_name in strategies[:2]:
                 try:
                     result = await apply_strategy(
                         strategy_name, optimized_content, provider=provider
                     )
                     optimized_content = result.optimized_text
-                except Exception:
-                    pass  # skip failed strategy, continue with others
+                    applied_strategies.append(strategy_name)
+                except Exception as exc:
+                    strategy_errors[strategy_name] = str(exc)
 
             pre_score = score_card.overall
             score_card = compute_geo_score(
@@ -297,7 +300,7 @@ async def run_expert_pipeline(
             )
 
             # Save optimization experience for future reference.
-            for s_name in strategies[:2]:
+            for s_name in applied_strategies:
                 try:
                     await save_experience(OptimizationExperience(
                         brand_id=brand_id,
@@ -308,6 +311,7 @@ async def run_expert_pipeline(
                         score_after=score_card.overall,
                         improvement=score_card.overall - pre_score,
                         content_type="expert_pipeline",
+                        notes=strategy_errors.get(s_name, ""),
                     ))
                 except Exception:
                     pass  # non-critical

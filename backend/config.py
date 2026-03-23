@@ -70,8 +70,8 @@ class Settings(BaseSettings):
     GEO_AUTO_OPTIMIZE_MAX_ROUNDS: int = 1  # max optimization rounds (avoid loops)
 
     # Data provider config.
-    DATA_PROVIDER: str = "llm"  # llm | mock | baidu_index | 5118
-    FEATURE_LLM_DATA_PROVIDER: bool = True
+    DATA_PROVIDER: str = "mock"  # llm | mock | baidu_index | 5118
+    FEATURE_LLM_DATA_PROVIDER: bool = False
     BAIDU_INDEX_API_KEY: Optional[str] = None
     PROVIDER_5118_API_KEY: Optional[str] = None
 

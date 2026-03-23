@@ -22,6 +22,7 @@ from services.geo_scorer import (
     compute_platform_fitness,
     compute_readability,
     compute_structured_data,
+    suggest_optimization_strategies,
 )
 
 
@@ -287,3 +288,45 @@ class TestComputeGEOScore:
             + card.freshness * 0.15
         )
         assert abs(card.overall - expected) < 0.1
+
+
+class TestSuggestOptimizationStrategies:
+    def test_returns_weak_dimensions_strategies_in_order(self):
+        card = GEOScoreCard(
+            authority_citation=20,
+            structured_data=35,
+            keyword_coverage=90,
+            credibility_signals=30,
+            platform_fitness=80,
+            freshness=75,
+        )
+        strategies = suggest_optimization_strategies(card, threshold=65)
+        assert strategies == [
+            "citation_enhancement",
+            "statistics_addition",
+            "qa_structuring",
+        ]
+
+    def test_deduplicates_preserving_order(self):
+        card = GEOScoreCard(
+            authority_citation=20,
+            structured_data=90,
+            keyword_coverage=95,
+            credibility_signals=10,
+            platform_fitness=90,
+            freshness=90,
+        )
+        strategies = suggest_optimization_strategies(card, threshold=80)
+        assert strategies == ["statistics_addition", "citation_enhancement"]
+
+    def test_respects_threshold(self):
+        card = GEOScoreCard(
+            authority_citation=70,
+            structured_data=72,
+            keyword_coverage=71,
+            credibility_signals=73,
+            platform_fitness=74,
+            freshness=75,
+        )
+        strategies = suggest_optimization_strategies(card, threshold=65)
+        assert strategies == []

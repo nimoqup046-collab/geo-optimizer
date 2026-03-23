@@ -8,6 +8,7 @@ Storage: lightweight JSON files under ``data/experiences/{brand_id}/``.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Base directory for experience data (relative to backend/).
 _EXPERIENCE_DIR = Path(os.getenv("EXPERIENCE_DIR", "data/experiences"))
+_FILE_LOCKS: Dict[str, asyncio.Lock] = {}
 
 
 @dataclass
@@ -47,7 +49,16 @@ def _experience_path(brand_id: str, platform: str) -> Path:
     return _EXPERIENCE_DIR / safe_brand / f"{safe_platform}.json"
 
 
-def _load_experiences(path: Path) -> List[Dict[str, Any]]:
+def _get_path_lock(path: Path) -> asyncio.Lock:
+    key = str(path.resolve())
+    lock = _FILE_LOCKS.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _FILE_LOCKS[key] = lock
+    return lock
+
+
+def _load_experiences_sync(path: Path) -> List[Dict[str, Any]]:
     """Load experience records from a JSON file."""
     if not path.exists():
         return []
@@ -60,20 +71,28 @@ def _load_experiences(path: Path) -> List[Dict[str, Any]]:
         return []
 
 
+def _write_experiences_sync(path: Path, records: List[Dict[str, Any]]) -> None:
+    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(records, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)
+
+
 async def save_experience(exp: OptimizationExperience) -> None:
     """Append an optimization experience record."""
     path = _experience_path(exp.brand_id, exp.platform)
     path.parent.mkdir(parents=True, exist_ok=True)
+    lock = _get_path_lock(path)
 
-    records = _load_experiences(path)
-    records.append(asdict(exp))
+    async with lock:
+        records = await asyncio.to_thread(_load_experiences_sync, path)
+        records.append(asdict(exp))
 
-    # Keep at most 200 records per brand+platform to avoid unbounded growth.
-    if len(records) > 200:
-        records = records[-200:]
+        # Keep at most 200 records per brand+platform to avoid unbounded growth.
+        if len(records) > 200:
+            records = records[-200:]
 
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, indent=2)
+        await asyncio.to_thread(_write_experiences_sync, path, records)
 
 
 async def query_experiences(
@@ -95,7 +114,7 @@ async def query_experiences(
     )
 
     for path in files:
-        for record in _load_experiences(path):
+        for record in await asyncio.to_thread(_load_experiences_sync, path):
             try:
                 exp = OptimizationExperience(**record)
                 if exp.improvement >= min_improvement:
