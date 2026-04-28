@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 import uuid
 
 from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text
@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
 
-_utcnow = lambda: datetime.now(timezone.utc)
+_utcnow = lambda: datetime.utcnow()
 
 
 class ContentStatus:

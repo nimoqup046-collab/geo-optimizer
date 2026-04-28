@@ -1,6 +1,6 @@
 """Ranking snapshot model for AI search engine ranking tracking."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 import uuid
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
 
-_utcnow = lambda: datetime.now(timezone.utc)
+_utcnow = lambda: datetime.utcnow()
 
 
 class RankingSnapshot(Base):

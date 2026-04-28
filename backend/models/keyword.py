@@ -3,11 +3,11 @@
 """
 from sqlalchemy import String, Integer, Float, JSON, Boolean, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime, timezone
+from datetime import datetime
 from database import Base
 import uuid
 
-_utcnow = lambda: datetime.now(timezone.utc)
+_utcnow = lambda: datetime.utcnow()
 
 
 class KeywordCategory:
