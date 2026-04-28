@@ -1,0 +1,65 @@
+services:
+  - type: web
+    name: geo-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: geo-db
+          property: connectionString
+      - key: DEBUG
+        value: "false"
+      - key: DEFAULT_LLM_PROVIDER
+        value: zhipu
+      - key: ZHIPU_MODEL
+        value: glm-4-flash
+      - key: UPLOAD_DIR
+        value: ./data/uploads
+      - key: EXPORT_DIR
+        value: ./data/exports
+      - key: STORAGE_BACKEND
+        value: local
+      - key: FEATURE_WECHAT_RICH_POST
+        value: "false"
+      - key: FEATURE_PROMPT_PROFILES
+        value: "true"
+      - key: FEATURE_WORKFLOW_STEPS
+        value: "true"
+      - key: FEATURE_AGENT_TEAM
+        value: "true"
+      - key: CORS_ORIGINS
+        value: https://geo-frontend.onrender.com,http://localhost:5173
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: ZHIPU_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: DOUBAO_API_KEY
+        sync: false
+
+  - type: web
+    name: geo-frontend
+    runtime: node
+    rootDir: frontend
+    plan: free
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run preview -- --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://geo-backend.onrender.com/api/v1
+      - key: VITE_DEMO_MODE
+        value: "1"
+      - key: VITE_FEATURE_WECHAT_RICH_POST
+        value: "1"
+      - key: VITE_INTERNAL_API_KEY
+        sync: false
+
+databases:
+  - name: geo-db
+    plan: free
