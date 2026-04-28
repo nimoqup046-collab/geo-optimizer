@@ -84,9 +84,14 @@ python scripts/import_real_assets.py
 导入报告：
 - `data/reports/import-report-latest.json`
 
-## 6. Railway
+## 6. 云部署
 
-部署细节见：`docs/RAILWAY_DEPLOY.md`
+- Render（内测优先）：`docs/RENDER_DEPLOY.md`
+- Railway（历史方案）：`docs/RAILWAY_DEPLOY.md`
+
+建议：
+- 当前团队内测默认走 Render。
+- 保留 Railway 文档用于回滚或对照排障。
 
 ## 7. GitHub 上传前检查
 
